@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Mia Agenda - Google Calendar Integrata</title>
     <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()" async defer></script>
+    <script src="https://accounts.google.com/gsi/client" onload="gisLoaded()" async defer></script>
     <style>
         * {
             margin: 0;
@@ -760,8 +761,10 @@
         let tasks = {};
         let currentEvent = null;
         let isGoogleAPILoaded = false;
+        let isGISLoaded = false;
         let isGoogleAPIInitialized = false;
         let isUserAuthenticated = false;
+        let tokenClient;
 
         // ROUTINE FISSE
         const fixedRoutine = {
@@ -924,58 +927,33 @@
         }
 
         async function testGoogleAPI() {
-            addSyncLog('🔧 Test diagnostico Google API...', 'info');
+            addSyncLog('🔧 Test diagnostico Google API (GIS)...', 'info');
             
             // Test 1: Verifica caricamento gapi
             if (typeof gapi === 'undefined') {
                 addSyncLog('❌ Google API non caricata', 'error');
-                addSyncLog('Ricarica la pagina e riprova', 'warning');
                 return;
             }
-            addSyncLog('✅ Google API caricata correttamente', 'success');
+            addSyncLog('✅ Google API (gapi) caricata', 'success');
             
-            // Test 2: Verifica configurazione
-            try {
-                addSyncLog('🔍 Test configurazione...', 'info');
-                
-                const testConfig = {
-                    apiKey: GOOGLE_CONFIG.apiKey,
-                    clientId: GOOGLE_CONFIG.clientId,
-                    discoveryDocs: GOOGLE_CONFIG.discoveryDocs,
-                    scope: GOOGLE_CONFIG.scopes
-                };
-                
-                await gapi.client.init(testConfig);
-                addSyncLog('✅ Configurazione Google API OK', 'success');
-                
-                // Test 3: Verifica auth instance
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (authInstance) {
-                    addSyncLog('✅ Auth instance creata', 'success');
-                    
-                    if (authInstance.isSignedIn.get()) {
-                        addSyncLog('✅ Utente già autenticato', 'success');
-                        updateConnectionStatus('connected', 'Test completato - Connesso');
-                    } else {
-                        addSyncLog('ℹ️ Utente non autenticato', 'info');
-                        addSyncLog('Clicca Login per autenticarti', 'info');
-                        updateConnectionStatus('disconnected', 'Test completato - Pronto per login');
-                    }
-                } else {
-                    addSyncLog('❌ Impossibile creare auth instance', 'error');
-                }
-                
-            } catch (error) {
-                addSyncLog('❌ Errore test configurazione:', 'error');
-                addSyncLog(error.message || JSON.stringify(error), 'error');
-                
-                if (error.error === 'idpiframe_initialization_failed') {
-                    addSyncLog('🔧 Soluzione: Aggiungi questo dominio in Google Cloud Console', 'warning');
-                    addSyncLog(`Dominio da aggiungere: ${window.location.origin}`, 'warning');
-                }
-                
-                updateConnectionStatus('disconnected', 'Errore configurazione');
+            // Test 2: Verifica caricamento GIS
+            if (typeof google === 'undefined' || !google.accounts) {
+                addSyncLog('❌ Google Identity Services non caricata', 'error');
+                return;
             }
+            addSyncLog('✅ Google Identity Services caricata', 'success');
+            
+            // Test 3: Verifica inizializzazione
+            if (!isGoogleAPIInitialized) {
+                addSyncLog('⚠️ API non ancora inizializzata', 'warning');
+                addSyncLog('Inizializzazione in corso...', 'info');
+                initGoogleAPI();
+                return;
+            }
+            
+            addSyncLog('✅ Sistema pronto per autenticazione', 'success');
+            addSyncLog('Clicca Login per connetterti a Google Calendar', 'info');
+            updateConnectionStatus('disconnected', 'Pronto per login');
         }
 
         async function authenticateUser() {
@@ -1778,38 +1756,35 @@
                 initCalendar();
                 
                 // Inizializza Google API quando disponibile
-                addSyncLog('🔍 Controllo disponibilità Google API...', 'info');
+                addSyncLog('🔍 Controllo librerie Google...', 'info');
                 
-                // Primo tentativo immediato
-                if (typeof gapi !== 'undefined') {
-                    addSyncLog('✅ Google API già disponibile', 'success');
-                    setTimeout(() => initGoogleAPI(), 1000);
-                } else {
-                    addSyncLog('⏳ Google API in caricamento...', 'info');
+                // Controlla se entrambe le librerie sono caricate
+                let attempts = 0;
+                const maxAttempts = 15;
+                
+                const checkInterval = setInterval(() => {
+                    attempts++;
                     
-                    // Controlla ogni secondo per 10 secondi
-                    let attempts = 0;
-                    const maxAttempts = 10;
+                    const gapiOK = typeof gapi !== 'undefined';
+                    const gisOK = typeof google !== 'undefined' && google.accounts;
                     
-                    const checkInterval = setInterval(() => {
-                        attempts++;
-                        addSyncLog(`🔍 Tentativo ${attempts}/${maxAttempts}...`, 'info');
-                        
-                        if (typeof gapi !== 'undefined') {
-                            addSyncLog('✅ Google API caricata!', 'success');
-                            clearInterval(checkInterval);
-                            setTimeout(() => initGoogleAPI(), 500);
-                        } else if (attempts >= maxAttempts) {
-                            addSyncLog('❌ Google API non disponibile dopo 10 tentativi', 'error');
-                            addSyncLog('🔧 Soluzioni possibili:', 'warning');
-                            addSyncLog('• Controlla la connessione internet', 'warning');
-                            addSyncLog('• Disabilita adblocker temporaneamente', 'warning');
-                            addSyncLog('• Ricarica la pagina', 'warning');
-                            addSyncLog('• Prova in modalità incognito', 'warning');
-                            clearInterval(checkInterval);
-                        }
-                    }, 1000);
-                }
+                    addSyncLog(`🔍 Tentativo ${attempts}/${maxAttempts} - GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, 'info');
+                    
+                    if (gapiOK && gisOK) {
+                        addSyncLog('✅ Tutte le librerie Google caricate!', 'success');
+                        isGoogleAPILoaded = true;
+                        isGISLoaded = true;
+                        clearInterval(checkInterval);
+                        setTimeout(() => initGoogleAPI(), 500);
+                    } else if (attempts >= maxAttempts) {
+                        addSyncLog('❌ Timeout caricamento librerie Google', 'error');
+                        addSyncLog('🔧 Soluzioni:', 'warning');
+                        addSyncLog('• Controlla connessione internet', 'warning');
+                        addSyncLog('• Disabilita adblocker', 'warning');
+                        addSyncLog('• Prova in modalità incognito', 'warning');
+                        clearInterval(checkInterval);
+                    }
+                }, 1000);
 
                 // Aggiungi diagnostica per debug
                 setTimeout(() => {
@@ -1877,14 +1852,25 @@
             }
         });
 
-        // Gestione caricamento Google API
+        // Gestione caricamento Google API e GIS
         window.gapiLoaded = function() {
-            addSyncLog('✅ Google API caricata correttamente', 'success');
-            setTimeout(() => {
-                addSyncLog('🔧 Inizializzazione Google API...', 'info');
-                initGoogleAPI();
-            }, 500);
+            addSyncLog('✅ Google API (gapi) caricata', 'success');
+            isGoogleAPILoaded = true;
+            checkAndInitialize();
         };
+
+        window.gisLoaded = function() {
+            addSyncLog('✅ Google Identity Services caricata', 'success');
+            isGISLoaded = true;
+            checkAndInitialize();
+        };
+
+        function checkAndInitialize() {
+            if (isGoogleAPILoaded && isGISLoaded) {
+                addSyncLog('🚀 Tutte le librerie caricate - Inizializzazione...', 'success');
+                setTimeout(() => initGoogleAPI(), 500);
+            }
+        }
 
         // Fallback per caricamento Google API
         function checkGoogleAPI() {
