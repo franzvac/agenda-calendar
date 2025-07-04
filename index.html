@@ -616,6 +616,7 @@
                 <span id="syncStatusText">Inizializzazione...</span>
                 <div style="display: flex; gap: 10px;">
                     <button class="sync-btn" onclick="testGoogleAPI()">🔧 Test</button>
+                    <button class="sync-btn" onclick="showDomainHelp()" style="background: #e67e22;">🔗 Domini</button>
                     <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
                 </div>
             </div>
@@ -943,17 +944,59 @@
             }
             addSyncLog('✅ Google Identity Services caricata', 'success');
             
-            // Test 3: Verifica inizializzazione
-            if (!isGoogleAPIInitialized) {
-                addSyncLog('⚠️ API non ancora inizializzata', 'warning');
-                addSyncLog('Inizializzazione in corso...', 'info');
-                initGoogleAPI();
-                return;
-            }
+            // Test 3: Debug configurazione
+            addSyncLog('🔍 Debug configurazione:', 'info');
+            addSyncLog(`• Client ID: ${GOOGLE_CONFIG.clientId.substring(0, 20)}...`, 'info');
+            addSyncLog(`• API Key: ${GOOGLE_CONFIG.apiKey.substring(0, 20)}...`, 'info');
+            addSyncLog(`• Dominio: ${window.location.origin}`, 'info');
+            addSyncLog(`• Protocollo: ${window.location.protocol}`, 'info');
             
-            addSyncLog('✅ Sistema pronto per autenticazione', 'success');
-            addSyncLog('Clicca Login per connetterti a Google Calendar', 'info');
-            updateConnectionStatus('disconnected', 'Pronto per login');
+            // Test 4: Verifica inizializzazione client
+            try {
+                addSyncLog('🔄 Test inizializzazione client...', 'info');
+                
+                await gapi.client.init({
+                    apiKey: GOOGLE_CONFIG.apiKey,
+                    discoveryDocs: GOOGLE_CONFIG.discoveryDocs
+                });
+                
+                addSyncLog('✅ Client API inizializzato', 'success');
+                
+                // Test token client
+                try {
+                    const testTokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: GOOGLE_CONFIG.clientId,
+                        scope: GOOGLE_CONFIG.scopes,
+                        callback: () => {} // callback vuoto per test
+                    });
+                    
+                    addSyncLog('✅ Token client creato con successo', 'success');
+                    addSyncLog('🎯 Configurazione corretta! Sistema pronto.', 'success');
+                    updateConnectionStatus('disconnected', 'Pronto per login');
+                    
+                } catch (tokenError) {
+                    addSyncLog('❌ Errore token client:', 'error');
+                    addSyncLog(tokenError.message, 'error');
+                    
+                    if (tokenError.message.includes('Invalid origin')) {
+                        addSyncLog('🔧 SOLUZIONE - Vai in Google Cloud Console:', 'warning');
+                        addSyncLog('1. Credenziali → OAuth 2.0 Client ID', 'warning');
+                        addSyncLog('2. Modifica il tuo client', 'warning');
+                        addSyncLog(`3. Aggiungi: ${window.location.origin}`, 'warning');
+                        addSyncLog('4. Salva e aspetta 5-10 minuti', 'warning');
+                    }
+                }
+                
+            } catch (clientError) {
+                addSyncLog('❌ Errore inizializzazione client:', 'error');
+                addSyncLog(clientError.message, 'error');
+                
+                if (clientError.message.includes('API key')) {
+                    addSyncLog('🔧 Problema API Key - verifica in Google Cloud Console', 'warning');
+                } else if (clientError.message.includes('quota')) {
+                    addSyncLog('🔧 Quota API superata - controlla limiti', 'warning');
+                }
+            }
         }
 
         async function authenticateUser() {
@@ -1614,6 +1657,38 @@
         function closePopup() {
             document.getElementById('popupOverlay').style.display = 'none';
             currentEvent = null;
+        }
+
+        function showDomainHelp() {
+            const helpText = `🔗 CONFIGURAZIONE DOMINI GOOGLE CLOUD CONSOLE
+
+📍 DOMINI DA AGGIUNGERE:
+• https://franzvac.github.io
+• https://franzvac.github.io/agenda-calendar
+
+🛠️ PROCEDURA PASSO-PASSO:
+
+1️⃣ Vai su console.cloud.google.com
+2️⃣ Seleziona il tuo progetto
+3️⃣ Menu → API e servizi → Credenziali
+4️⃣ Clicca sul tuo OAuth 2.0 Client ID
+5️⃣ Nella sezione "Origini JavaScript autorizzate"
+6️⃣ Clicca "+ AGGIUNGI URI"
+7️⃣ Inserisci: https://franzvac.github.io
+8️⃣ Clicca "+ AGGIUNGI URI" di nuovo
+9️⃣ Inserisci: https://franzvac.github.io/agenda-calendar
+🔟 Clicca "SALVA"
+
+⏰ IMPORTANTE: Aspetta 5-10 minuti dopo aver salvato prima di riprovare!
+
+🔍 VERIFICA: Il dominio corrente è: ${window.location.origin}${window.location.pathname}`;
+
+            alert(helpText);
+            
+            addSyncLog('📋 Guida domini mostrata', 'info');
+            addSyncLog(`🔍 URL completo corrente: ${window.location.href}`, 'info');
+            addSyncLog(`🔍 Origin: ${window.location.origin}`, 'info');
+            addSyncLog(`🔍 Pathname: ${window.location.pathname}`, 'info');
         }
 
         function showHelp() {
