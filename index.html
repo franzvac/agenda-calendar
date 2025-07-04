@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>La Mia Agenda - Google Calendar Integrata</title>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script src="https://apis.google.com/js/api.js" onload="gapiLoaded()" async defer></script>
     <style>
         * {
             margin: 0;
@@ -613,7 +613,10 @@
             <div class="sync-status">
                 <div class="sync-indicator" id="syncIndicator"></div>
                 <span id="syncStatusText">Inizializzazione...</span>
-                <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="sync-btn" onclick="testGoogleAPI()">🔧 Test</button>
+                    <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
+                </div>
             </div>
         </div>
 
@@ -847,12 +850,21 @@
         function initGoogleClient() {
             addSyncLog('Configurazione client Google Calendar...', 'info');
             
-            gapi.client.init({
+            const initConfig = {
                 apiKey: GOOGLE_CONFIG.apiKey,
                 clientId: GOOGLE_CONFIG.clientId,
                 discoveryDocs: GOOGLE_CONFIG.discoveryDocs,
                 scope: GOOGLE_CONFIG.scopes
-            }).then(
+            };
+
+            // Debug della configurazione
+            console.log('Configurazione Google:', {
+                apiKey: GOOGLE_CONFIG.apiKey ? 'OK' : 'MANCANTE',
+                clientId: GOOGLE_CONFIG.clientId ? 'OK' : 'MANCANTE',
+                origin: window.location.origin
+            });
+
+            gapi.client.init(initConfig).then(
                 function() {
                     addSyncLog('Google Calendar API pronta', 'success');
                     isGoogleAPIInitialized = true;
@@ -875,8 +887,26 @@
                 },
                 function(error) {
                     addSyncLog('Errore configurazione Google API', 'error');
+                    console.error('Dettaglio errore Google API:', error);
+                    
+                    if (error.error) {
+                        switch (error.error) {
+                            case 'idpiframe_initialization_failed':
+                                addSyncLog('Errore domini autorizzati in Google Cloud Console', 'error');
+                                addSyncLog(`Aggiungi ${window.location.origin} alle origini autorizzate`, 'warning');
+                                break;
+                            case 'invalid_client':
+                                addSyncLog('Client ID non valido o non configurato', 'error');
+                                break;
+                            case 'access_denied':
+                                addSyncLog('Accesso negato - controlla le impostazioni OAuth', 'error');
+                                break;
+                            default:
+                                addSyncLog(`Errore: ${error.error}`, 'error');
+                        }
+                    }
+                    
                     updateConnectionStatus('disconnected', 'Errore configurazione');
-                    console.error('Errore Google API:', error);
                 }
             );
         }
@@ -890,6 +920,61 @@
             } else {
                 addSyncLog('Utente disconnesso', 'info');
                 updateConnectionStatus('disconnected', 'Autenticazione richiesta');
+            }
+        }
+
+        async function testGoogleAPI() {
+            addSyncLog('🔧 Test diagnostico Google API...', 'info');
+            
+            // Test 1: Verifica caricamento gapi
+            if (typeof gapi === 'undefined') {
+                addSyncLog('❌ Google API non caricata', 'error');
+                addSyncLog('Ricarica la pagina e riprova', 'warning');
+                return;
+            }
+            addSyncLog('✅ Google API caricata correttamente', 'success');
+            
+            // Test 2: Verifica configurazione
+            try {
+                addSyncLog('🔍 Test configurazione...', 'info');
+                
+                const testConfig = {
+                    apiKey: GOOGLE_CONFIG.apiKey,
+                    clientId: GOOGLE_CONFIG.clientId,
+                    discoveryDocs: GOOGLE_CONFIG.discoveryDocs,
+                    scope: GOOGLE_CONFIG.scopes
+                };
+                
+                await gapi.client.init(testConfig);
+                addSyncLog('✅ Configurazione Google API OK', 'success');
+                
+                // Test 3: Verifica auth instance
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (authInstance) {
+                    addSyncLog('✅ Auth instance creata', 'success');
+                    
+                    if (authInstance.isSignedIn.get()) {
+                        addSyncLog('✅ Utente già autenticato', 'success');
+                        updateConnectionStatus('connected', 'Test completato - Connesso');
+                    } else {
+                        addSyncLog('ℹ️ Utente non autenticato', 'info');
+                        addSyncLog('Clicca Login per autenticarti', 'info');
+                        updateConnectionStatus('disconnected', 'Test completato - Pronto per login');
+                    }
+                } else {
+                    addSyncLog('❌ Impossibile creare auth instance', 'error');
+                }
+                
+            } catch (error) {
+                addSyncLog('❌ Errore test configurazione:', 'error');
+                addSyncLog(error.message || JSON.stringify(error), 'error');
+                
+                if (error.error === 'idpiframe_initialization_failed') {
+                    addSyncLog('🔧 Soluzione: Aggiungi questo dominio in Google Cloud Console', 'warning');
+                    addSyncLog(`Dominio da aggiungere: ${window.location.origin}`, 'warning');
+                }
+                
+                updateConnectionStatus('disconnected', 'Errore configurazione');
             }
         }
 
@@ -1693,19 +1778,47 @@
                 initCalendar();
                 
                 // Inizializza Google API quando disponibile
+                addSyncLog('🔍 Controllo disponibilità Google API...', 'info');
+                
+                // Primo tentativo immediato
                 if (typeof gapi !== 'undefined') {
+                    addSyncLog('✅ Google API già disponibile', 'success');
                     setTimeout(() => initGoogleAPI(), 1000);
                 } else {
-                    addSyncLog('Google API in caricamento...', 'info');
-                    // Retry dopo un po'
-                    setTimeout(() => {
+                    addSyncLog('⏳ Google API in caricamento...', 'info');
+                    
+                    // Controlla ogni secondo per 10 secondi
+                    let attempts = 0;
+                    const maxAttempts = 10;
+                    
+                    const checkInterval = setInterval(() => {
+                        attempts++;
+                        addSyncLog(`🔍 Tentativo ${attempts}/${maxAttempts}...`, 'info');
+                        
                         if (typeof gapi !== 'undefined') {
-                            initGoogleAPI();
-                        } else {
-                            addSyncLog('Google API non disponibile. Ricarica la pagina.', 'warning');
+                            addSyncLog('✅ Google API caricata!', 'success');
+                            clearInterval(checkInterval);
+                            setTimeout(() => initGoogleAPI(), 500);
+                        } else if (attempts >= maxAttempts) {
+                            addSyncLog('❌ Google API non disponibile dopo 10 tentativi', 'error');
+                            addSyncLog('🔧 Soluzioni possibili:', 'warning');
+                            addSyncLog('• Controlla la connessione internet', 'warning');
+                            addSyncLog('• Disabilita adblocker temporaneamente', 'warning');
+                            addSyncLog('• Ricarica la pagina', 'warning');
+                            addSyncLog('• Prova in modalità incognito', 'warning');
+                            clearInterval(checkInterval);
                         }
-                    }, 3000);
+                    }, 1000);
                 }
+
+                // Aggiungi diagnostica per debug
+                setTimeout(() => {
+                    addSyncLog(`🔍 Dominio corrente: ${window.location.origin}`, 'info');
+                    addSyncLog('📋 Verifica in Google Cloud Console:', 'info');
+                    addSyncLog('• OAuth 2.0 Client ID configurato', 'info');
+                    addSyncLog('• Origini JavaScript autorizzate incluso questo dominio', 'info');
+                    addSyncLog('• Calendar API abilitata nel progetto', 'info');
+                }, 2000);
                 
                 console.log('✅ WebApp inizializzata con successo');
                 
@@ -1754,7 +1867,8 @@
                         addSyncLog(`📊 ${totalDays} giorni con eventi programmati`, 'success');
                     }
                     
-                    addSyncLog('🔐 Clicca "Login" per connettere Google Calendar', 'info');
+                    addSyncLog('🔧 Clicca "Test" per verificare Google API', 'info');
+                    addSyncLog('🔐 Poi clicca "Login" per connettere Google Calendar', 'info');
                 }, 1500);
                 
             } catch (error) {
@@ -1765,9 +1879,22 @@
 
         // Gestione caricamento Google API
         window.gapiLoaded = function() {
-            addSyncLog('Google API caricata', 'success');
-            setTimeout(() => initGoogleAPI(), 500);
+            addSyncLog('✅ Google API caricata correttamente', 'success');
+            setTimeout(() => {
+                addSyncLog('🔧 Inizializzazione Google API...', 'info');
+                initGoogleAPI();
+            }, 500);
         };
+
+        // Fallback per caricamento Google API
+        function checkGoogleAPI() {
+            if (typeof gapi !== 'undefined') {
+                addSyncLog('✅ Google API trovata (fallback)', 'success');
+                initGoogleAPI();
+                return true;
+            }
+            return false;
+        }
 
         console.log('🎉 JavaScript WebApp Agenda con Google Calendar caricato!');
     </script>
