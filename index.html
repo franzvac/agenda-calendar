@@ -610,6 +610,9 @@
         <div class="header">
             <h1>🗓️ La Mia Agenda Completa</h1>
             <p>Sincronizzazione automatica con Google Calendar</p>
+            <div style="position: absolute; top: 10px; left: 20px; background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px; color: rgba(255,255,255,0.8);">
+                v3.2.1 - Sistema Moderno GIS
+            </div>
             
             <div class="sync-status">
                 <div class="sync-indicator" id="syncIndicator"></div>
@@ -1901,13 +1904,14 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
                     });
                 }
                 
-                // Messaggio di benvenuto
+                // Messaggio di benvenuto con versione
                 setTimeout(function() {
                     const today = formatDateDisplay(new Date());
                     const todayKey = formatDateKey(new Date());
                     
-                    addSyncLog(`🎯 AGENDA GOOGLE CALENDAR - ${today}`, 'success');
-                    addSyncLog('📋 Sistema inizializzato correttamente', 'info');
+                    addSyncLog(`🎯 AGENDA v3.2.1 - SISTEMA MODERNO GIS`, 'success');
+                    addSyncLog(`📅 ${today}`, 'info');
+                    addSyncLog('📋 Sistema inizializzato con librerie moderne', 'info');
                     addSyncLog('🗑️ Calendario raccolta differenziata 2025 caricato', 'success');
                     
                     // Controlla se oggi c'è raccolta rifiuti
@@ -1931,7 +1935,7 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
                     }
                     
                     addSyncLog('🔧 Clicca "Test" per verificare Google API', 'info');
-                    addSyncLog('🔐 Poi clicca "Login" per connettere Google Calendar', 'info');
+                    addSyncLog('🔐 Poi clicca "Login" per sistema moderno GIS', 'info');
                 }, 1500);
                 
             } catch (error) {
