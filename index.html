@@ -214,7 +214,7 @@
             }
         }
 
-        // GOOGLE CALENDAR API INTEGRATION con fallback
+        // GOOGLE CALENDAR API INTEGRATION - Versione GitHub Pages
         function initGoogleCalendarAPI() {
             if (!calendarConfig.googleClientId || !calendarConfig.googleApiKey) {
                 addSyncLog('Configurazione Google API mancante', 'error');
@@ -223,141 +223,197 @@
 
             addSyncLog('Inizializzazione Google Calendar API...', 'info');
             
-            // Prova prima il nuovo Google Identity Services
-            tryGoogleIdentityServices().then(success => {
-                if (success) {
-                    addSyncLog('Usando Google Identity Services', 'success');
-                } else {
-                    addSyncLog('Google Identity Services non disponibile, provo legacy API...', 'info');
-                    tryLegacyGoogleAPI();
-                }
-            });
+            // Per GitHub Pages, usiamo direttamente le Google API legacy
+            // che sono più stabili per domini statici
+            loadGoogleAPIDirectly();
         }
 
-        async function tryGoogleIdentityServices() {
-            try {
-                addSyncLog('Tentativo Google Identity Services...', 'info');
-                
-                // Carica Google Identity Services
-                return new Promise((resolve) => {
-                    const script = document.createElement('script');
-                    script.src = 'https://accounts.google.com/gsi/client';
-                    script.onload = () => {
-                        addSyncLog('Google Identity Services caricato', 'success');
-                        initGoogleIdentity();
-                        resolve(true);
-                    };
-                    script.onerror = () => {
-                        addSyncLog('Google Identity Services non disponibile', 'error');
-                        resolve(false);
-                    };
-                    document.head.appendChild(script);
-                    
-                    // Timeout di 5 secondi
-                    setTimeout(() => {
-                        addSyncLog('Timeout Google Identity Services', 'error');
-                        resolve(false);
-                    }, 5000);
-                });
-            } catch (error) {
-                addSyncLog('Errore Google Identity Services: ' + error.message, 'error');
-                return false;
-            }
-        }
-
-        function initGoogleIdentity() {
-            try {
-                // Configura Google Identity
-                window.google.accounts.id.initialize({
-                    client_id: calendarConfig.googleClientId,
-                    callback: handleGoogleIdentityResponse
-                });
-                
-                addSyncLog('Google Identity inizializzato', 'success');
-                updateConnectionStatus(false); // Non ancora autenticato
-                
-            } catch (error) {
-                addSyncLog('Errore init Google Identity: ' + error.message, 'error');
-                tryLegacyGoogleAPI();
-            }
-        }
-
-        function handleGoogleIdentityResponse(response) {
-            addSyncLog('Risposta Google Identity ricevuta', 'success');
-            // Per ora impostiamo come connesso per test
-            updateConnectionStatus(true);
-            updateSyncIndicator('connected');
-        }
-
-        function tryLegacyGoogleAPI() {
-            addSyncLog('Tentativo Google API legacy...', 'info');
+        function loadGoogleAPIDirectly() {
+            addSyncLog('Caricamento Google API per GitHub Pages...', 'info');
             
-            // Prova diversi CDN per Google API
-            const apiUrls = [
-                'https://apis.google.com/js/api.js',
-                'https://www.gstatic.com/charts/loader.js', // Fallback
-            ];
-            
-            loadGoogleAPIFromUrls(apiUrls, 0);
-        }
-
-        function loadGoogleAPIFromUrls(urls, index) {
-            if (index >= urls.length) {
-                addSyncLog('Tutti i CDN Google API falliti', 'error');
-                addSyncLog('Possibili cause: Adblocker, firewall, connessione', 'error');
-                showFallbackOptions();
+            if (window.gapi) {
+                addSyncLog('Google API già caricata', 'success');
+                loadGoogleAPI();
                 return;
             }
             
-            const url = urls[index];
-            addSyncLog(`Tentativo caricamento da: ${url}`, 'info');
-            
+            // Carica direttamente le Google API con timeout esteso
             const script = document.createElement('script');
-            script.src = url;
+            script.src = 'https://apis.google.com/js/api.js';
+            script.async = true;
+            script.defer = true;
+            
+            let loaded = false;
             
             script.onload = () => {
-                if (url.includes('api.js')) {
-                    addSyncLog('Google API SDK caricato da: ' + url, 'success');
+                if (!loaded) {
+                    loaded = true;
+                    addSyncLog('Google API caricata con successo', 'success');
                     loadGoogleAPI();
-                } else {
-                    addSyncLog('URL alternativo caricato, ma non è Google API', 'error');
-                    loadGoogleAPIFromUrls(urls, index + 1);
                 }
             };
             
             script.onerror = () => {
-                addSyncLog(`Errore caricamento da: ${url}`, 'error');
-                loadGoogleAPIFromUrls(urls, index + 1);
+                if (!loaded) {
+                    loaded = true;
+                    addSyncLog('Errore caricamento Google API - Provo CDN alternativo', 'error');
+                    loadAlternativeGoogleAPI();
+                }
             };
             
             document.head.appendChild(script);
             
-            // Timeout per questo URL
+            // Timeout più lungo per connessioni lente
             setTimeout(() => {
-                if (!window.gapi) {
-                    addSyncLog(`Timeout per: ${url}`, 'error');
-                    loadGoogleAPIFromUrls(urls, index + 1);
+                if (!loaded && !window.gapi) {
+                    loaded = true;
+                    addSyncLog('Timeout Google API - Provo metodo alternativo', 'error');
+                    loadAlternativeGoogleAPI();
                 }
-            }, 5000);
+            }, 15000); // 15 secondi invece di 5
         }
 
-        function showFallbackOptions() {
-            addSyncLog('=== OPZIONI DI RISOLUZIONE ===', 'info');
-            addSyncLog('1. Disabilita adblocker temporaneamente', 'info');
-            addSyncLog('2. Prova con un browser diverso', 'info');
-            addSyncLog('3. Verifica connessione internet', 'info');
-            addSyncLog('4. Usa HTTPS invece di HTTP', 'info');
-            addSyncLog('5. Controlla firewall aziendale', 'info');
+        function loadAlternativeGoogleAPI() {
+            addSyncLog('Tentativo caricamento da CDN alternativo...', 'info');
             
-            // Mostra modal con istruzioni
+            // Prova con URL alternativo
+            const script = document.createElement('script');
+            script.src = 'https://www.gstatic.com/charts/loader.js';
+            script.onload = () => {
+                addSyncLog('CDN alternativo caricato, ma Google API non disponibile', 'error');
+                showGitHubPagesHelp();
+            };
+            script.onerror = () => {
+                addSyncLog('Tutti i CDN falliti', 'error');
+                showGitHubPagesHelp();
+            };
+            document.head.appendChild(script);
+        }
+
+        function loadGoogleAPI() {
+            addSyncLog('Inizializzazione moduli Google API...', 'info');
+            
+            try {
+                gapi.load('client:auth2', {
+                    callback: () => {
+                        addSyncLog('Moduli caricati con successo', 'success');
+                        initGoogleClient();
+                    },
+                    onerror: () => {
+                        addSyncLog('Errore caricamento moduli', 'error');
+                        showGitHubPagesHelp();
+                    },
+                    timeout: 20000, // 20 secondi
+                    ontimeout: () => {
+                        addSyncLog('Timeout moduli Google API', 'error');
+                        showGitHubPagesHelp();
+                    }
+                });
+            } catch (error) {
+                addSyncLog('Errore in gapi.load: ' + error.message, 'error');
+                showGitHubPagesHelp();
+            }
+        }
+
+        function initGoogleClient() {
+            addSyncLog('Configurazione client Google Calendar...', 'info');
+            
+            const initConfig = {
+                apiKey: calendarConfig.googleApiKey,
+                clientId: calendarConfig.googleClientId,
+                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+                scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
+            };
+            
+            gapi.client.init(initConfig).then(() => {
+                addSyncLog('Google Calendar API inizializzata con successo', 'success');
+                
+                // Controlla autenticazione
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (authInstance && authInstance.isSignedIn.get()) {
+                    addSyncLog('Utente già autenticato', 'success');
+                    updateConnectionStatus(true);
+                    updateSyncIndicator('connected');
+                    
+                    // Test immediato
+                    testCalendarAccess();
+                } else {
+                    addSyncLog('Pronto per autenticazione', 'info');
+                    updateConnectionStatus(false);
+                    updateSyncIndicator('disconnected');
+                }
+            }).catch(error => {
+                addSyncLog('Errore inizializzazione client:', 'error');
+                
+                if (error.details) {
+                    addSyncLog('Dettagli: ' + error.details, 'error');
+                }
+                
+                // Errori specifici per GitHub Pages
+                if (error.error === 'idpiframe_initialization_failed') {
+                    addSyncLog('Errore iframe - Verifica dominio in Google Cloud Console', 'error');
+                    showDomainConfigHelp();
+                } else if (error.error === 'popup_blocked_by_browser') {
+                    addSyncLog('Popup bloccato - Abilita popup per questo sito', 'error');
+                } else {
+                    addSyncLog('Errore generico: ' + JSON.stringify(error), 'error');
+                }
+                
+                updateConnectionStatus(false);
+                updateSyncIndicator('disconnected');
+            });
+        }
+
+        function showGitHubPagesHelp() {
+            addSyncLog('=== GUIDA RISOLUZIONE GITHUB PAGES ===', 'info');
+            addSyncLog('1. Verifica che il sito sia servito via HTTPS', 'info');
+            addSyncLog('2. Controlla dominio in Google Cloud Console', 'info');
+            addSyncLog('3. Disabilita adblocker temporaneamente', 'info');
+            addSyncLog('4. Prova modalità incognito', 'info');
+            addSyncLog('5. Verifica firewall/proxy aziendale', 'info');
+            
             setTimeout(() => {
-                alert(`❌ Impossibile caricare Google Calendar API\n\n` +
-                      `Possibili soluzioni:\n` +
-                      `• Disabilita adblocker temporaneamente\n` +
-                      `• Usa HTTPS invece di file:// locale\n` +
-                      `• Verifica che Google non sia bloccato\n` +
-                      `• Prova con browser diverso\n\n` +
-                      `Controlla i log per dettagli.`);
+                const currentUrl = window.location.href;
+                let helpMessage = '❌ Impossibile caricare Google Calendar API\n\n';
+                
+                if (currentUrl.startsWith('https://')) {
+                    helpMessage += '✅ HTTPS: OK\n';
+                } else {
+                    helpMessage += '❌ HTTPS: Richiesto per Google API\n';
+                }
+                
+                helpMessage += '\nVerifica:\n';
+                helpMessage += '• Dominio autorizzato in Google Cloud Console\n';
+                helpMessage += '• Adblocker disabilitato\n';
+                helpMessage += '• Popup abilitati\n';
+                helpMessage += '• Connessione internet stabile\n\n';
+                helpMessage += 'URL corrente: ' + currentUrl + '\n\n';
+                helpMessage += 'Vuoi attivare la modalità test?';
+                
+                if (confirm(helpMessage)) {
+                    enableManualMode();
+                }
+            }, 2000);
+        }
+
+        function showDomainConfigHelp() {
+            addSyncLog('=== CONFIGURAZIONE DOMINIO RICHIESTA ===', 'info');
+            const currentDomain = window.location.origin;
+            addSyncLog('Dominio corrente: ' + currentDomain, 'info');
+            addSyncLog('Aggiungi questo dominio in Google Cloud Console:', 'info');
+            addSyncLog('API e servizi → Credenziali → OAuth Client ID', 'info');
+            addSyncLog('Origini JavaScript autorizzate → + AGGIUNGI URI', 'info');
+            addSyncLog('Inserisci: ' + currentDomain, 'info');
+            
+            setTimeout(() => {
+                alert(`🔧 Configurazione dominio richiesta\n\n` +
+                      `Aggiungi questo dominio in Google Cloud Console:\n\n` +
+                      `${currentDomain}\n\n` +
+                      `Percorso:\n` +
+                      `API e servizi → Credenziali → OAuth Client ID\n` +
+                      `→ Origini JavaScript autorizzate\n` +
+                      `→ + AGGIUNGI URI\n\n` +
+                      `Dopo aver aggiunto, ricarica la pagina.`);
             }, 1000);
         }
 
@@ -473,8 +529,11 @@
                     return;
                 }
 
+                // Per GitHub Pages, usiamo parametri più permissivi
                 authInstance.signIn({
-                    prompt: 'consent'
+                    prompt: 'select_account',
+                    ux_mode: 'popup',
+                    redirect_uri: window.location.origin
                 }).then(() => {
                     addSyncLog('Autenticazione Google completata', 'success');
                     updateConnectionStatus(true);
@@ -487,9 +546,14 @@
                     addSyncLog('Errore autenticazione: ' + JSON.stringify(error), 'error');
                     
                     if (error.error === 'popup_closed_by_user') {
-                        addSyncLog('Autenticazione annullata dall\'utente', 'error');
+                        addSyncLog('Popup chiuso dall\'utente', 'info');
                     } else if (error.error === 'access_denied') {
                         addSyncLog('Accesso negato - Autorizza l\'applicazione', 'error');
+                    } else if (error.error === 'popup_blocked_by_browser') {
+                        addSyncLog('Popup bloccato dal browser', 'error');
+                        setTimeout(() => {
+                            alert('🚫 Popup bloccato\n\nAbilita i popup per questo sito e riprova.\n\nNel browser:\n• Clicca sull\'icona popup nella barra indirizzi\n• Seleziona "Consenti sempre popup"');
+                        }, 1000);
                     }
                     
                     updateConnectionStatus(false);
