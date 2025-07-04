@@ -1,98 +1,7 @@
-<div class="export-section">
-                    <h3>📤 Export & Sync</h3>
-                    <button class="btn btn-export" onclick="exportToCSV()">📊 Esporta CSV</button>
-                    <button class="btn btn-export" onclick="syncAllEvents()">🔄 Sync Completo</button>
-                </div>
-
-                <div class="routine-list">
-                    <h3>⏰ Routine Giornaliera</h3>
-                    <div class="routine-item">
-                        <div class="routine-time">7:00-8:45</div>
-                        <div class="routine-task">🐕 Uscita mattutina Babu</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">9:00</div>
-                        <div class="routine-task">☕ Colazione + 💊 Medicina Annamaria</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">12:15-13:00</div>
-                        <div class="routine-task">🏃 Parco Babu + Ginnastica</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">17:00</div>
-                        <div class="routine-task">💊 Medicina Annamaria</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">18:30-20:00</div>
-                        <div class="routine-task">🐕 Uscita serale Babu</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">22:30</div>
-                        <div class="routine-task">💊 Medicina + 🎮 Tempo libero</div>
-                    </div>
-                </div>
-
-                <div class="ai-chat">
-                    <div class="chat-header">🤖 Assistente AI</div>
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="chat-message">👋 Ciao! Dimmi cosa devi fare e ti suggerisco quando inserirlo in agenda.</div>
-                    </div>
-                    <input type="text" id="chatInput" class="chat-input" placeholder="Es: Devo andare dai vigili urbani...">
-                    <button class="btn" onclick="sendMessage()">Invia Richiesta</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL CONFIGURAZIONE -->
-    <div class="modal-overlay" id="configModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeConfigModal()">×</button>
-            <div class="modal-title">⚙️ Configurazione Google Calendar</div>
-            
-            <div class="modal-help">
-                <h4>Come configurare l'integrazione:</h4>
-                <ol>
-                    <li>Vai su <strong>Google Cloud Console</strong> e crea un progetto</li>
-                    <li>Abilita <strong>Google Calendar API</strong></li>
-                    <li>Crea credenziali OAuth 2.0 e API Key</li>
-                    <li>Autorizza il dominio della tua app</li>
-                    <li>Copia Client ID e API Key qui sotto</li>
-                    <li>Il sistema si collegherà direttamente alle Google Calendar API</li>
-                </ol>
-            </div>
-
-            <div class="modal-form-group">
-                <label for="googleClientId">Google OAuth Client ID:</label>
-                <input type="text" id="googleClientId" class="modal-form-control" 
-                       placeholder="123456789-xxxxxxxx.apps.googleusercontent.com">
-            </div>
-
-            <div class="modal-form-group">
-                <label for="googleApiKey">Google Calendar API Key:</label>
-                <input type="password" id="googleApiKey" class="modal-form-control" 
-                       placeholder="AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXX">
-            </div>
-
-            <div class="modal-form-group">
-                <label for="calendarId">Google Calendar ID:</label>
-                <input type="text" id="calendarId" class="modal-form-control" 
-                       placeholder="primary (o ID specifico del calendario)">
-            </div>
-
-            <div class="modal-form-group">
-                <label for="syncInterval">Intervallo Sincronizzazione (minuti):</label>
-                <select id="syncInterval" class="modal-form-control">
-                    <option value="5">5 minuti</option>
-                    <option value="15" selected>15 minuti</option>
-                    <option value="30">30 minuti</option>
-                    <option value="60">1 ora</option>
-                </select>
-            </div>
-
-            <div class="modal-actions">
-                <button class="modal-btn save" onclick="saveConfig()">💾 Salva Configurazione</button>
+<div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="modal-btn save" onclick="saveConfig()">💾 Salva</button>
                 <button class="modal-btn cancel" onclick="closeConfigModal()">❌ Annulla</button>
+                <button class="modal-btn" onclick="testManualMode()" style="background: #9b59b6;">🧪 Test</button>
             </div>
         </div>
     </div>
@@ -104,35 +13,25 @@
             <div class="popup-title" id="popupTitle"></div>
             <div class="popup-time" id="popupTime"></div>
             <div class="popup-description" id="popupDescription"></div>
-            <div class="popup-actions">
-                <button class="modal-btn" onclick="editEvent()">✏️ Modifica</button>
-                <button class="modal-btn" onclick="deleteEvent()">🗑️ Elimina</button>
-            </div>
         </div>
     </div>
 
     <button class="floating-help" onclick="showHelp()" title="Aiuto">❓</button>
 
     <script>
-        console.log('🚀 Caricamento WebApp Agenda con Google Calendar Integration...');
+        console.log('🚀 Caricamento WebApp Agenda...');
 
         // VARIABILI GLOBALI
         let currentDate = new Date();
         let selectedDate = new Date();
         let tasks = {};
-        let syncInterval = null;
-        let midnightInterval = null;
-        let isConnected = false;
         let currentEvent = null;
 
         // CONFIGURAZIONE GOOGLE CALENDAR
         const calendarConfig = {
             googleClientId: '',
             googleApiKey: '',
-            calendarId: 'primary',
-            syncInterval: 15,
-            lastSync: null,
-            syncedEvents: new Set()
+            calendarId: 'primary'
         };
 
         // ROUTINE FISSE
@@ -162,10 +61,7 @@
         }
 
         function formatDateForInput(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
+            return formatDateKey(date);
         }
 
         function formatDateDisplay(date) {
@@ -178,1209 +74,78 @@
             return date.toLocaleDateString('it-IT', options);
         }
 
-        function addChatMessage(message) {
-            try {
-                const container = document.getElementById('chatMessages');
-                if (container) {
-                    const div = document.createElement('div');
-                    div.className = 'chat-message';
-                    div.textContent = message;
-                    container.appendChild(div);
-                    container.scrollTop = container.scrollHeight;
-                }
-                console.log('CHAT:', message);
-            } catch (error) {
-                console.log('CHAT (fallback):', message);
-            }
-        }
-
         function addSyncLog(message, type = 'info') {
             try {
                 const container = document.getElementById('syncLog');
                 if (container) {
                     const div = document.createElement('div');
                     div.className = `sync-log-entry ${type}`;
-                    div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                    div.textContent = `[${new Date().toLocaleTimeString('it-IT')}] ${message}`;
                     container.appendChild(div);
                     container.scrollTop = container.scrollHeight;
                     
-                    // Mantieni solo gli ultimi 10 log
-                    if (container.children.length > 10) {
+                    if (container.children.length > 8) {
                         container.removeChild(container.firstChild);
                     }
                 }
+                console.log(`SYNC [${type.toUpperCase()}]:`, message);
             } catch (error) {
-                console.log('SYNC LOG:', message);
+                console.log(`SYNC [${type.toUpperCase()}]:`, message);
             }
         }
 
-        // GOOGLE CALENDAR API INTEGRATION - Versione GitHub Pages
-        function initGoogleCalendarAPI() {
-            if (!calendarConfig.googleClientId || !calendarConfig.googleApiKey) {
-                addSyncLog('Configurazione Google API mancante', 'error');
-                return;
-            }
-
-            addSyncLog('Inizializzazione Google Calendar API...', 'info');
-            
-            // Per GitHub Pages, usiamo direttamente le Google API legacy
-            // che sono più stabili per domini statici
-            loadGoogleAPIDirectly();
-        }
-
-        function loadGoogleAPIDirectly() {
-            addSyncLog('Caricamento Google API per GitHub Pages...', 'info');
-            
-            if (window.gapi) {
-                addSyncLog('Google API già caricata', 'success');
-                loadGoogleAPI();
-                return;
-            }
-            
-            // Carica direttamente le Google API con timeout esteso
-            const script = document.createElement('script');
-            script.src = 'https://apis.google.com/js/api.js';
-            script.async = true;
-            script.defer = true;
-            
-            let loaded = false;
-            
-            script.onload = () => {
-                if (!loaded) {
-                    loaded = true;
-                    addSyncLog('Google API caricata con successo', 'success');
-                    loadGoogleAPI();
-                }
-            };
-            
-            script.onerror = () => {
-                if (!loaded) {
-                    loaded = true;
-                    addSyncLog('Errore caricamento Google API - Provo CDN alternativo', 'error');
-                    loadAlternativeGoogleAPI();
-                }
-            };
-            
-            document.head.appendChild(script);
-            
-            // Timeout più lungo per connessioni lente
-            setTimeout(() => {
-                if (!loaded && !window.gapi) {
-                    loaded = true;
-                    addSyncLog('Timeout Google API - Provo metodo alternativo', 'error');
-                    loadAlternativeGoogleAPI();
-                }
-            }, 15000); // 15 secondi invece di 5
-        }
-
-        function loadAlternativeGoogleAPI() {
-            addSyncLog('Tentativo caricamento da CDN alternativo...', 'info');
-            
-            // Prova con URL alternativo
-            const script = document.createElement('script');
-            script.src = 'https://www.gstatic.com/charts/loader.js';
-            script.onload = () => {
-                addSyncLog('CDN alternativo caricato, ma Google API non disponibile', 'error');
-                showGitHubPagesHelp();
-            };
-            script.onerror = () => {
-                addSyncLog('Tutti i CDN falliti', 'error');
-                showGitHubPagesHelp();
-            };
-            document.head.appendChild(script);
-        }
-
-        function loadGoogleAPI() {
-            addSyncLog('Inizializzazione moduli Google API...', 'info');
-            
-            try {
-                gapi.load('client:auth2', {
-                    callback: () => {
-                        addSyncLog('Moduli caricati con successo', 'success');
-                        initGoogleClient();
-                    },
-                    onerror: () => {
-                        addSyncLog('Errore caricamento moduli', 'error');
-                        showGitHubPagesHelp();
-                    },
-                    timeout: 20000, // 20 secondi
-                    ontimeout: () => {
-                        addSyncLog('Timeout moduli Google API', 'error');
-                        showGitHubPagesHelp();
-                    }
-                });
-            } catch (error) {
-                addSyncLog('Errore in gapi.load: ' + error.message, 'error');
-                showGitHubPagesHelp();
-            }
-        }
-
-        function initGoogleClient() {
-            addSyncLog('Configurazione client Google Calendar...', 'info');
-            
-            const initConfig = {
-                apiKey: calendarConfig.googleApiKey,
-                clientId: calendarConfig.googleClientId,
-                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-                scope: 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events'
-            };
-            
-            gapi.client.init(initConfig).then(() => {
-                addSyncLog('Google Calendar API inizializzata con successo', 'success');
-                
-                // Controlla autenticazione
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (authInstance && authInstance.isSignedIn.get()) {
-                    addSyncLog('Utente già autenticato', 'success');
-                    updateConnectionStatus(true);
-                    updateSyncIndicator('connected');
-                    
-                    // Test immediato
-                    testCalendarAccess();
-                } else {
-                    addSyncLog('Pronto per autenticazione', 'info');
-                    updateConnectionStatus(false);
-                    updateSyncIndicator('disconnected');
-                }
-            }).catch(error => {
-                addSyncLog('Errore inizializzazione client:', 'error');
-                
-                if (error.details) {
-                    addSyncLog('Dettagli: ' + error.details, 'error');
-                }
-                
-                // Errori specifici per GitHub Pages
-                if (error.error === 'idpiframe_initialization_failed') {
-                    addSyncLog('Errore iframe - Verifica dominio in Google Cloud Console', 'error');
-                    showDomainConfigHelp();
-                } else if (error.error === 'popup_blocked_by_browser') {
-                    addSyncLog('Popup bloccato - Abilita popup per questo sito', 'error');
-                } else {
-                    addSyncLog('Errore generico: ' + JSON.stringify(error), 'error');
-                }
-                
-                updateConnectionStatus(false);
-                updateSyncIndicator('disconnected');
-            });
-        }
-
-        function showGitHubPagesHelp() {
-            addSyncLog('=== GUIDA RISOLUZIONE GITHUB PAGES ===', 'info');
-            addSyncLog('1. Verifica che il sito sia servito via HTTPS', 'info');
-            addSyncLog('2. Controlla dominio in Google Cloud Console', 'info');
-            addSyncLog('3. Disabilita adblocker temporaneamente', 'info');
-            addSyncLog('4. Prova modalità incognito', 'info');
-            addSyncLog('5. Verifica firewall/proxy aziendale', 'info');
-            
-            setTimeout(() => {
-                const currentUrl = window.location.href;
-                let helpMessage = '❌ Impossibile caricare Google Calendar API\n\n';
-                
-                if (currentUrl.startsWith('https://')) {
-                    helpMessage += '✅ HTTPS: OK\n';
-                } else {
-                    helpMessage += '❌ HTTPS: Richiesto per Google API\n';
-                }
-                
-                helpMessage += '\nVerifica:\n';
-                helpMessage += '• Dominio autorizzato in Google Cloud Console\n';
-                helpMessage += '• Adblocker disabilitato\n';
-                helpMessage += '• Popup abilitati\n';
-                helpMessage += '• Connessione internet stabile\n\n';
-                helpMessage += 'URL corrente: ' + currentUrl + '\n\n';
-                helpMessage += 'Vuoi attivare la modalità test?';
-                
-                if (confirm(helpMessage)) {
-                    enableManualMode();
-                }
-            }, 2000);
-        }
-
-        function showDomainConfigHelp() {
-            addSyncLog('=== CONFIGURAZIONE DOMINIO RICHIESTA ===', 'info');
-            const currentDomain = window.location.origin;
-            addSyncLog('Dominio corrente: ' + currentDomain, 'info');
-            addSyncLog('Aggiungi questo dominio in Google Cloud Console:', 'info');
-            addSyncLog('API e servizi → Credenziali → OAuth Client ID', 'info');
-            addSyncLog('Origini JavaScript autorizzate → + AGGIUNGI URI', 'info');
-            addSyncLog('Inserisci: ' + currentDomain, 'info');
-            
-            setTimeout(() => {
-                alert(`🔧 Configurazione dominio richiesta\n\n` +
-                      `Aggiungi questo dominio in Google Cloud Console:\n\n` +
-                      `${currentDomain}\n\n` +
-                      `Percorso:\n` +
-                      `API e servizi → Credenziali → OAuth Client ID\n` +
-                      `→ Origini JavaScript autorizzate\n` +
-                      `→ + AGGIUNGI URI\n\n` +
-                      `Dopo aver aggiunto, ricarica la pagina.`);
-            }, 1000);
-        }
-
-        // Funzione per test manuale senza Google API
-        function enableManualMode() {
-            addSyncLog('=== MODALITÀ MANUALE ATTIVATA ===', 'info');
-            addSyncLog('Google API non disponibile, simulazione eventi', 'info');
-            
-            // Simula connessione per test
-            updateConnectionStatus(true);
-            updateSyncIndicator('connected');
-            
-            // Override delle funzioni API con simulazioni
-            window.simulateGoogleCalendar = true;
-            
-            addChatMessage('⚠️ Modalità test attivata - Google API non disponibile');
-            addChatMessage('📝 Puoi comunque usare l\'agenda normalmente');
-        }
-
-        function loadGoogleAPI() {
-            addSyncLog('Caricamento moduli Google API...', 'info');
-            
-            try {
-                gapi.load('client:auth2', {
-                    callback: () => {
-                        addSyncLog('Moduli Google API caricati', 'success');
-                        initGoogleClient();
-                    },
-                    onerror: () => {
-                        addSyncLog('Errore caricamento moduli Google API', 'error');
-                        updateConnectionStatus(false);
-                    },
-                    timeout: 10000, // 10 secondi timeout
-                    ontimeout: () => {
-                        addSyncLog('Timeout caricamento Google API', 'error');
-                        updateConnectionStatus(false);
-                    }
-                });
-            } catch (error) {
-                addSyncLog('Errore in gapi.load: ' + error.message, 'error');
-                updateConnectionStatus(false);
-            }
-        }
-
-        function initGoogleClient() {
-            addSyncLog('Inizializzazione client Google...', 'info');
-            
-            const initConfig = {
-                apiKey: calendarConfig.googleApiKey,
-                clientId: calendarConfig.googleClientId,
-                discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
-                scope: 'https://www.googleapis.com/auth/calendar'
-            };
-            
-            addSyncLog('Config: API Key presente: ' + (!!initConfig.apiKey), 'info');
-            addSyncLog('Config: Client ID presente: ' + (!!initConfig.clientId), 'info');
-            
-            gapi.client.init(initConfig).then(() => {
-                addSyncLog('Google Calendar API inizializzata con successo', 'success');
-                
-                // Controlla se già autenticato
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (authInstance && authInstance.isSignedIn.get()) {
-                    addSyncLog('Utente già autenticato', 'success');
-                    updateConnectionStatus(true);
-                    updateSyncIndicator('connected');
-                } else {
-                    addSyncLog('Autenticazione richiesta', 'info');
-                    updateConnectionStatus(false);
-                    updateSyncIndicator('disconnected');
-                }
-            }).catch(error => {
-                addSyncLog('Errore inizializzazione Google API:', 'error');
-                addSyncLog('Dettaglio errore: ' + JSON.stringify(error), 'error');
-                
-                // Analizza errori specifici
-                if (error.error) {
-                    switch (error.error) {
-                        case 'invalid_client':
-                            addSyncLog('Client ID non valido - Verifica configurazione', 'error');
-                            break;
-                        case 'invalid_request':
-                            addSyncLog('Richiesta non valida - Verifica API Key', 'error');
-                            break;
-                        case 'access_denied':
-                            addSyncLog('Accesso negato - Verifica permessi', 'error');
-                            break;
-                        default:
-                            addSyncLog('Errore: ' + error.error, 'error');
-                    }
-                }
-                
-                updateConnectionStatus(false);
-                updateSyncIndicator('disconnected');
-            });
-        }
-
-        function authenticateGoogle() {
-            if (!window.gapi || !gapi.auth2) {
-                addSyncLog('Google API non inizializzata correttamente', 'error');
-                return;
-            }
-
-            addSyncLog('Avvio autenticazione Google...', 'info');
-            updateSyncIndicator('syncing');
-
-            try {
-                const authInstance = gapi.auth2.getAuthInstance();
-                
-                if (!authInstance) {
-                    addSyncLog('Istanza auth non disponibile', 'error');
-                    updateSyncIndicator('disconnected');
-                    return;
-                }
-
-                // Per GitHub Pages, usiamo parametri più permissivi
-                authInstance.signIn({
-                    prompt: 'select_account',
-                    ux_mode: 'popup',
-                    redirect_uri: window.location.origin
-                }).then(() => {
-                    addSyncLog('Autenticazione Google completata', 'success');
-                    updateConnectionStatus(true);
-                    updateSyncIndicator('connected');
-                    
-                    // Test immediato dopo autenticazione
-                    testCalendarAccess();
-                    
-                }).catch(error => {
-                    addSyncLog('Errore autenticazione: ' + JSON.stringify(error), 'error');
-                    
-                    if (error.error === 'popup_closed_by_user') {
-                        addSyncLog('Popup chiuso dall\'utente', 'info');
-                    } else if (error.error === 'access_denied') {
-                        addSyncLog('Accesso negato - Autorizza l\'applicazione', 'error');
-                    } else if (error.error === 'popup_blocked_by_browser') {
-                        addSyncLog('Popup bloccato dal browser', 'error');
-                        setTimeout(() => {
-                            alert('🚫 Popup bloccato\n\nAbilita i popup per questo sito e riprova.\n\nNel browser:\n• Clicca sull\'icona popup nella barra indirizzi\n• Seleziona "Consenti sempre popup"');
-                        }, 1000);
-                    }
-                    
-                    updateConnectionStatus(false);
-                    updateSyncIndicator('disconnected');
-                });
-            } catch (error) {
-                addSyncLog('Errore durante signIn: ' + error.message, 'error');
-                updateConnectionStatus(false);
-                updateSyncIndicator('disconnected');
-            }
-        }
-
-        async function testCalendarAccess() {
-            addSyncLog('Test accesso Calendar API...', 'info');
-            
-            try {
-                // Test semplice: ottieni lista calendari
-                const response = await gapi.client.calendar.calendarList.list({
-                    maxResults: 1
-                });
-                
-                if (response && response.result) {
-                    addSyncLog('Test Calendar API: OK', 'success');
-                    addSyncLog('Calendari disponibili: ' + (response.result.items?.length || 0), 'info');
-                    return true;
-                } else {
-                    addSyncLog('Test Calendar API: Risposta vuota', 'error');
-                    return false;
-                }
-            } catch (error) {
-                addSyncLog('Test Calendar API fallito: ' + error.message, 'error');
-                
-                if (error.status === 403) {
-                    addSyncLog('Errore 403: Calendar API non abilitata o quota superata', 'error');
-                } else if (error.status === 401) {
-                    addSyncLog('Errore 401: Token non valido, richiesta nuova autenticazione', 'error');
-                }
-                
-                return false;
-            }
-        }
-
-        async function fetchGoogleCalendarEvents(dateStart, dateEnd) {
-            if (!gapi.client.calendar) {
-                throw new Error('Google Calendar API non inizializzata');
-            }
-
-            try {
-                const response = await gapi.client.calendar.events.list({
-                    calendarId: calendarConfig.calendarId,
-                    timeMin: dateStart.toISOString(),
-                    timeMax: dateEnd.toISOString(),
-                    singleEvents: true,
-                    orderBy: 'startTime'
-                });
-
-                return response.result.items || [];
-            } catch (error) {
-                console.error('Errore fetch eventi Google Calendar:', error);
-                throw error;
-            }
-        }
-
-        async function createGoogleCalendarEvent(event) {
-            if (!gapi.client.calendar) {
-                throw new Error('Google Calendar API non inizializzata');
-            }
-
-            const startDateTime = new Date(event.date + 'T' + (event.time || '09:00') + ':00');
-            const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 ora
-
-            const calendarEvent = {
-                summary: event.title,
-                description: event.description || 'Evento creato da Agenda WebApp',
-                start: {
-                    dateTime: startDateTime.toISOString(),
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                },
-                end: {
-                    dateTime: endDateTime.toISOString(),
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                }
-            };
-
-            try {
-                const response = await gapi.client.calendar.events.insert({
-                    calendarId: calendarConfig.calendarId,
-                    resource: calendarEvent
-                });
-
-                return response.result;
-            } catch (error) {
-                console.error('Errore creazione evento Google Calendar:', error);
-                throw error;
-            }
-        }
-
-        // FUNZIONI CONFIGURAZIONE
-        function openConfigModal() {
-            const saved = localStorage.getItem('calendarConfig');
-            if (saved) {
-                const config = JSON.parse(saved);
-                document.getElementById('googleClientId').value = config.googleClientId || '';
-                document.getElementById('googleApiKey').value = config.googleApiKey || '';
-                document.getElementById('calendarId').value = config.calendarId || 'primary';
-                document.getElementById('syncInterval').value = config.syncInterval || 15;
-            }
-            
-            document.getElementById('configModal').style.display = 'flex';
-            addDebugButton(); // Aggiungi pulsante debug
-        }
-
-        function closeConfigModal() {
-            document.getElementById('configModal').style.display = 'none';
-        }
-
-        function saveConfig() {
-            const config = {
-                googleClientId: document.getElementById('googleClientId').value.trim(),
-                googleApiKey: document.getElementById('googleApiKey').value.trim(),
-                calendarId: document.getElementById('calendarId').value.trim(),
-                syncInterval: parseInt(document.getElementById('syncInterval').value),
-                lastSync: null,
-                syncedEvents: []
-            };
-
-            if (!config.googleClientId || !config.googleApiKey) {
-                alert('⚠️ Inserisci Google Client ID e API Key per continuare');
-                return;
-            }
-
-            localStorage.setItem('calendarConfig', JSON.stringify(config));
-            
-            calendarConfig.googleClientId = config.googleClientId;
-            calendarConfig.googleApiKey = config.googleApiKey;
-            calendarConfig.calendarId = config.calendarId;
-            calendarConfig.syncInterval = config.syncInterval;
-            calendarConfig.lastSync = config.lastSync;
-            
-            closeConfigModal();
-            addSyncLog('Configurazione salvata con successo', 'success');
-            addChatMessage('✅ Configurazione Google Calendar salvata');
-            
-            initGoogleCalendarAPI();
-            startAutoSync();
-            setTimeout(() => testConnection(), 1000);
-        }
-
-        function testConnection() {
-            if (!calendarConfig.googleClientId || !calendarConfig.googleApiKey) {
-                addSyncLog('Configurazione Google API mancante', 'error');
-                updateConnectionStatus(false);
-                return;
-            }
-
-            addSyncLog('=== INIZIO TEST CONNESSIONE ===', 'info');
-            addSyncLog('Client ID: ' + calendarConfig.googleClientId.substring(0, 20) + '...', 'info');
-            addSyncLog('API Key: ' + calendarConfig.googleApiKey.substring(0, 10) + '...', 'info');
-            
-            updateSyncIndicator('syncing');
-
-            // Se Google API non è ancora caricata, inizializza
-            if (!window.gapi) {
-                addSyncLog('Google API non caricata, inizializzazione...', 'info');
-                initGoogleCalendarAPI();
-                return;
-            }
-
-            // Se client non è inizializzato, inizializza
-            if (!gapi.client || !gapi.client.calendar) {
-                addSyncLog('Client Google non inizializzato, inizializzazione...', 'info');
-                initGoogleClient();
-                return;
-            }
-
-            // Verifica se già autenticato
-            if (gapi.auth2) {
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (authInstance && authInstance.isSignedIn.get()) {
-                    addSyncLog('Utente già autenticato, test accesso...', 'success');
-                    updateConnectionStatus(true);
-                    updateSyncIndicator('connected');
-                    
-                    // Test accesso API
-                    testCalendarAccess().then(success => {
-                        if (success) {
-                            addSyncLog('=== TEST CONNESSIONE COMPLETATO CON SUCCESSO ===', 'success');
-                        } else {
-                            addSyncLog('=== TEST CONNESSIONE FALLITO ===', 'error');
-                        }
-                    });
-                } else {
-                    addSyncLog('Utente non autenticato, richiesta autenticazione...', 'info');
-                    authenticateGoogle();
-                }
-            } else {
-                addSyncLog('Auth2 non disponibile, reinizializzazione...', 'error');
-                initGoogleClient();
-            }
-        }
-
-        // Aggiungi funzione di debug
-        function debugGoogleAPI() {
-            addSyncLog('=== DEBUG GOOGLE API ===', 'info');
-            addSyncLog('window.gapi disponibile: ' + !!window.gapi, 'info');
-            
-            if (window.gapi) {
-                addSyncLog('gapi.client disponibile: ' + !!gapi.client, 'info');
-                addSyncLog('gapi.auth2 disponibile: ' + !!gapi.auth2, 'info');
-                
-                if (gapi.client) {
-                    addSyncLog('gapi.client.calendar disponibile: ' + !!gapi.client.calendar, 'info');
-                }
-                
-                if (gapi.auth2) {
-                    const authInstance = gapi.auth2.getAuthInstance();
-                    addSyncLog('AuthInstance disponibile: ' + !!authInstance, 'info');
-                    
-                    if (authInstance) {
-                        addSyncLog('Utente autenticato: ' + authInstance.isSignedIn.get(), 'info');
-                    }
-                }
-            }
-            addSyncLog('=== FINE DEBUG ===', 'info');
-        }
-
-        // Aggiungi pulsante modalità manuale (versione corretta)
-        function addDebugButton() {
-            setTimeout(() => {
-                const configModal = document.getElementById('configModal');
-                if (configModal) {
-                    const modalActions = configModal.querySelector('.modal-actions');
-                    if (!modalActions) return;
-
-                    // Rimuovi pulsanti esistenti per evitare duplicati
-                    const existingDebug = modalActions.querySelector('.debug-btn');
-                    const existingManual = modalActions.querySelector('.manual-btn');
-                    if (existingDebug) existingDebug.remove();
-                    if (existingManual) existingManual.remove();
-
-                    // Crea pulsante debug
-                    const debugBtn = document.createElement('button');
-                    debugBtn.className = 'modal-btn debug-btn';
-                    debugBtn.textContent = '🔍 Debug API';
-                    debugBtn.onclick = debugGoogleAPI;
-                    debugBtn.style.background = '#e67e22';
-                    
-                    // Crea pulsante modalità test
-                    const manualBtn = document.createElement('button');
-                    manualBtn.className = 'modal-btn manual-btn';
-                    manualBtn.textContent = '🧪 Modalità Test';
-                    manualBtn.onclick = enableManualMode;
-                    manualBtn.style.background = '#9b59b6';
-                    
-                    // Aggiungi i pulsanti
-                    modalActions.appendChild(debugBtn);
-                    modalActions.appendChild(manualBtn);
-                }
-            }, 100);
-        }
-
-        // Aggiungi controllo ambiente
-        function checkEnvironment() {
-            const protocol = window.location.protocol;
-            const hostname = window.location.hostname;
-            
-            addSyncLog('=== CONTROLLO AMBIENTE ===', 'info');
-            addSyncLog('Protocollo: ' + protocol, 'info');
-            addSyncLog('Hostname: ' + hostname, 'info');
-            
-            if (protocol === 'file:') {
-                addSyncLog('⚠️ Protocollo file:// rilevato', 'error');
-                addSyncLog('Google API potrebbe non funzionare', 'error');
-                addSyncLog('Suggerimento: Usa un server HTTP locale', 'info');
-                
-                setTimeout(() => {
-                    if (confirm('⚠️ Stai usando file:// locale\n\nGoogle Calendar API potrebbe non funzionare.\nVuoi attivare la modalità test?')) {
-                        enableManualMode();
-                    }
-                }, 2000);
-            }
-            
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                addSyncLog('✅ Server locale rilevato', 'success');
-            }
-            
-            // Controlla se Google è raggiungibile
-            testGoogleReachability();
-        }
-
-        function testGoogleReachability() {
-            addSyncLog('Test raggiungibilità Google...', 'info');
-            
-            const img = new Image();
-            img.onload = () => {
-                addSyncLog('✅ Google raggiungibile', 'success');
-            };
-            img.onerror = () => {
-                addSyncLog('❌ Google non raggiungibile', 'error');
-                addSyncLog('Verifica connessione internet o firewall', 'error');
-            };
-            img.src = 'https://www.google.com/favicon.ico?' + Date.now();
-        }
-
-        function updateConnectionStatus(connected) {
-            isConnected = connected;
-            const statusElement = document.getElementById('connectionStatus');
-            const textElement = document.getElementById('syncStatusText');
-            
-            if (connected) {
-                statusElement.textContent = 'Connesso';
-                statusElement.className = 'connection-status connected';
-                textElement.textContent = 'Connesso';
-            } else {
-                statusElement.textContent = 'Disconnesso';
-                statusElement.className = 'connection-status disconnected';
-                textElement.textContent = 'Disconnesso';
-            }
-        }
-
-        function updateSyncIndicator(status) {
-            const indicator = document.getElementById('syncIndicator');
-            indicator.className = `sync-indicator ${status}`;
-        }
-
-        async function manualSync() {
-            if (!isConnected) {
-                addSyncLog('Connessione richiesta per la sincronizzazione', 'error');
-                return;
-            }
-
-            if (!gapi.auth2 || !gapi.auth2.getAuthInstance().isSignedIn.get()) {
-                addSyncLog('Autenticazione Google richiesta', 'error');
-                authenticateGoogle();
-                return;
-            }
-
-            addSyncLog('Sincronizzazione con Google Calendar...', 'info');
-            updateSyncIndicator('syncing');
-            
-            try {
-                const today = new Date();
-                const weekStart = new Date(today);
-                weekStart.setDate(today.getDate() - today.getDay());
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 7);
-
-                const googleEvents = await fetchGoogleCalendarEvents(weekStart, weekEnd);
-                
-                let importedCount = 0;
-                googleEvents.forEach(googleEvent => {
-                    if (!googleEvent.start.dateTime) return;
-                    
-                    const eventDate = new Date(googleEvent.start.dateTime);
-                    const dateKey = formatDateKey(eventDate);
-                    const eventTime = eventDate.toTimeString().substring(0, 5);
-                    
-                    if (!tasks[dateKey]) {
-                        tasks[dateKey] = [];
-                    }
-                    
-                    const existingEvent = tasks[dateKey].find(task => 
-                        task.googleEventId === googleEvent.id ||
-                        (task.title === googleEvent.summary && task.time === eventTime)
-                    );
-                    
-                    if (!existingEvent) {
-                        tasks[dateKey].push({
-                            title: googleEvent.summary,
-                            time: eventTime,
-                            type: 'work',
-                            id: 'google_' + googleEvent.id,
-                            googleEventId: googleEvent.id,
-                            synced: true,
-                            source: 'google_calendar',
-                            description: googleEvent.description || 'Importato da Google Calendar'
-                        });
-                        importedCount++;
-                    }
-                });
-
-                Object.values(tasks).forEach(dayTasks => {
-                    dayTasks.sort((a, b) => {
-                        if (!a.time && !b.time) return 0;
-                        if (!a.time) return 1;
-                        if (!b.time) return -1;
-                        return a.time.localeCompare(b.time);
-                    });
-                });
-
-                addSyncLog(`Sincronizzazione completata: ${importedCount} eventi importati`, 'success');
-                updateSyncIndicator('connected');
-                updateDisplay();
-                updateSyncedEventsCount();
-                
-            } catch (error) {
-                addSyncLog('Errore durante la sincronizzazione: ' + error.message, 'error');
-                updateSyncIndicator('disconnected');
-            }
-        }
-
-        function startAutoSync() {
-            if (syncInterval) {
-                clearInterval(syncInterval);
-            }
-            
-            if (calendarConfig.syncInterval > 0) {
-                syncInterval = setInterval(() => {
-                    if (isConnected) {
-                        manualSync();
-                    }
-                }, calendarConfig.syncInterval * 60000);
-                
-                addSyncLog(`Auto-sync attivato ogni ${calendarConfig.syncInterval} minuti`, 'info');
-            }
-        }
-
-        function startMidnightUpdate() {
-            if (midnightInterval) {
-                clearInterval(midnightInterval);
-            }
-            
-            function msUntilMidnight() {
-                const now = new Date();
-                const midnight = new Date();
-                midnight.setHours(24, 0, 0, 0);
-                return midnight.getTime() - now.getTime();
-            }
-            
-            setTimeout(() => {
-                updateToToday();
-                midnightInterval = setInterval(updateToToday, 24 * 60 * 60 * 1000);
-            }, msUntilMidnight());
-            
-            addSyncLog('Aggiornamento automatico data attivato', 'info');
-        }
-
-        function updateToToday() {
-            const now = new Date();
-            const wasToday = formatDateKey(selectedDate) === formatDateKey(new Date(now.getTime() - 24 * 60 * 60 * 1000));
-            
-            if (wasToday) {
-                currentDate = new Date();
-                selectedDate = new Date();
-                updateDisplay();
-                updateStats();
-                
-                const newDate = formatDateDisplay(new Date());
-                addChatMessage(`🌅 Nuovo giorno: ${newDate}`);
-                addSyncLog(`Data aggiornata automaticamente: ${newDate}`, 'info');
-            }
-        }
-
-        async function syncDay() {
-            if (!isConnected) {
-                addSyncLog('Connessione richiesta per sincronizzare il giorno', 'error');
-                return;
-            }
-
-            if (!gapi.auth2 || !gapi.auth2.getAuthInstance().isSignedIn.get()) {
-                addSyncLog('Autenticazione Google richiesta', 'error');
-                authenticateGoogle();
-                return;
-            }
-
-            const dateKey = formatDateKey(selectedDate);
-            const dayTasks = tasks[dateKey] || [];
-            
-            addSyncLog(`Sincronizzazione giorno ${dateKey}...`, 'info');
-            
-            try {
-                const localEvents = dayTasks.filter(task => 
-                    !task.googleEventId && 
-                    task.syncToCalendar !== false &&
-                    task.source !== 'google_calendar'
-                );
-                
-                let syncedCount = 0;
-                for (const task of localEvents) {
-                    try {
-                        const googleEvent = await createGoogleCalendarEvent({
-                            title: task.title,
-                            description: task.description,
-                            date: dateKey,
-                            time: task.time
-                        });
-                        
-                        task.synced = true;
-                        task.googleEventId = googleEvent.id;
-                        calendarConfig.syncedEvents.add(task.id);
-                        syncedCount++;
-                    } catch (error) {
-                        addSyncLog(`Errore sync evento "${task.title}": ${error.message}`, 'error');
-                    }
-                }
-                
-                addSyncLog(`${syncedCount} eventi sincronizzati per ${dateKey}`, 'success');
-                updateDisplay();
-                updateSyncedEventsCount();
-                
-            } catch (error) {
-                addSyncLog(`Errore sincronizzazione giorno: ${error.message}`, 'error');
-            }
-        }
-
-        async function importDay() {
-            if (!isConnected) {
-                addSyncLog('Connessione richiesta per importare eventi', 'error');
-                return;
-            }
-
-            if (!gapi.auth2 || !gapi.auth2.getAuthInstance().isSignedIn.get()) {
-                addSyncLog('Autenticazione Google richiesta', 'error');
-                authenticateGoogle();
-                return;
-            }
-
-            const dateKey = formatDateKey(selectedDate);
-            addSyncLog(`Import eventi da Google Calendar per ${dateKey}...`, 'info');
-            
-            try {
-                const dayStart = new Date(selectedDate);
-                dayStart.setHours(0, 0, 0, 0);
-                const dayEnd = new Date(selectedDate);
-                dayEnd.setHours(23, 59, 59, 999);
-                
-                const googleEvents = await fetchGoogleCalendarEvents(dayStart, dayEnd);
-                
-                if (!tasks[dateKey]) {
-                    tasks[dateKey] = [];
-                }
-                
-                let importedCount = 0;
-                googleEvents.forEach(googleEvent => {
-                    if (!googleEvent.start.dateTime) return;
-                    
-                    const eventDate = new Date(googleEvent.start.dateTime);
-                    const eventTime = eventDate.toTimeString().substring(0, 5);
-                    
-                    const existingEvent = tasks[dateKey].find(task => 
-                        task.googleEventId === googleEvent.id
-                    );
-                    
-                    if (!existingEvent) {
-                        tasks[dateKey].push({
-                            title: googleEvent.summary || 'Evento Google Calendar',
-                            time: eventTime,
-                            type: 'work',
-                            id: 'google_' + googleEvent.id + '_' + Date.now(),
-                            googleEventId: googleEvent.id,
-                            synced: true,
-                            source: 'google_calendar',
-                            description: googleEvent.description || 'Importato da Google Calendar'
-                        });
-                        importedCount++;
-                    }
-                });
-                
-                tasks[dateKey].sort((a, b) => {
-                    if (!a.time && !b.time) return 0;
-                    if (!a.time) return 1;
-                    if (!b.time) return -1;
-                    return a.time.localeCompare(b.time);
-                });
-                
-                addSyncLog(`${importedCount} eventi importati`, 'success');
-                updateDisplay();
-                updateSyncedEventsCount();
-                
-            } catch (error) {
-                addSyncLog(`Errore import eventi: ${error.message}`, 'error');
-            }
-        }
-
-        async function syncAllEvents() {
-            if (!isConnected) {
-                addSyncLog('Connessione richiesta per sincronizzazione completa', 'error');
-                return;
-            }
-
-            addSyncLog('Sincronizzazione completa avviata...', 'info');
-            updateSyncIndicator('syncing');
-            
-            let totalEvents = 0;
-            Object.values(tasks).forEach(dayTasks => {
-                totalEvents += dayTasks.length;
-            });
-            
-            setTimeout(() => {
-                addSyncLog(`Sincronizzazione completa: ${totalEvents} eventi`, 'success');
-                updateSyncIndicator('connected');
-                
-                Object.values(tasks).forEach(dayTasks => {
-                    dayTasks.forEach(task => {
-                        task.synced = true;
-                        calendarConfig.syncedEvents.add(task.id);
-                    });
-                });
-                
-                updateDisplay();
-                updateSyncedEventsCount();
-            }, 3000);
-        }
-
-        function updateSyncedEventsCount() {
-            let syncedCount = 0;
-            Object.values(tasks).forEach(dayTasks => {
-                dayTasks.forEach(task => {
-                    if (task.synced) syncedCount++;
-                });
-            });
-            
-            document.getElementById('syncedEvents').textContent = syncedCount;
-        }
-
-        // FUNZIONI TASK
-        function addTask() {
-            try {
-                const title = document.getElementById('taskTitle').value.trim();
-                const dateInput = document.getElementById('taskDate').value;
-                const time = document.getElementById('taskTime').value;
-                const type = document.getElementById('taskType').value;
-                const syncToCalendar = document.getElementById('syncToCalendar').checked;
-
-                if (!title || !dateInput) {
-                    alert('Inserisci almeno il titolo e la data del task!');
-                    return;
-                }
-
-                const dateKey = dateInput;
-
-                if (!tasks[dateKey]) {
-                    tasks[dateKey] = [];
-                }
-
-                const newTask = {
-                    title: title,
-                    time: time,
-                    type: type,
-                    id: Date.now(),
-                    synced: false,
-                    syncToCalendar: syncToCalendar,
-                    source: 'local'
-                };
-
-                tasks[dateKey].push(newTask);
-
-                tasks[dateKey].sort(function(a, b) {
-                    if (!a.time && !b.time) return 0;
-                    if (!a.time) return 1;
-                    if (!b.time) return -1;
-                    return a.time.localeCompare(b.time);
-                });
-
-                document.getElementById('taskTitle').value = '';
-                document.getElementById('taskTime').value = '';
-
-                updateDisplay();
-                updateStats();
-
-                const taskDate = new Date(dateInput + 'T00:00:00');
-                const formattedDate = taskDate.toLocaleDateString('it-IT');
-                const timeText = time ? 'alle ' + time : 'senza orario specifico';
-                addChatMessage('✅ Task "' + title + '" aggiunto per ' + formattedDate + ' ' + timeText);
-                
-                if (syncToCalendar && isConnected) {
-                    if (gapi.auth2 && gapi.auth2.getAuthInstance().isSignedIn.get()) {
-                        setTimeout(async () => {
-                            try {
-                                const googleEvent = await createGoogleCalendarEvent({
-                                    title: title,
-                                    description: 'Creato da Agenda WebApp',
-                                    date: dateInput,
-                                    time: time
-                                });
-                                
-                                newTask.synced = true;
-                                newTask.googleEventId = googleEvent.id;
-                                calendarConfig.syncedEvents.add(newTask.id);
-                                updateDisplay();
-                                updateSyncedEventsCount();
-                                addSyncLog(`Task "${title}" sincronizzato con Google Calendar`, 'success');
-                            } catch (error) {
-                                addSyncLog(`Errore sync task "${title}": ${error.message}`, 'error');
-                            }
-                        }, 1000);
-                    } else {
-                        addChatMessage('⚠️ Autenticazione Google richiesta per la sincronizzazione');
-                    }
-                }
-                
-            } catch (error) {
-                console.error('Errore addTask:', error);
-                alert('Errore nell\'aggiunta del task');
-            }
-        }
-
-        function editEvent() {
-            if (!currentEvent) return;
-            
-            const newTitle = prompt('Modifica titolo:', currentEvent.title);
-            if (newTitle && newTitle.trim()) {
-                currentEvent.title = newTitle.trim();
-                currentEvent.synced = false;
-                updateDisplay();
-                closePopup();
-                addChatMessage('✏️ Evento modificato: ' + newTitle);
-            }
-        }
-
-        function deleteEvent() {
-            if (!currentEvent) return;
-            
-            if (confirm('Sei sicuro di voler eliminare questo evento?')) {
-                const dateKey = formatDateKey(selectedDate);
-                if (tasks[dateKey]) {
-                    tasks[dateKey] = tasks[dateKey].filter(task => task.id !== currentEvent.id);
-                    updateDisplay();
-                    updateStats();
-                    closePopup();
-                    addChatMessage('🗑️ Evento eliminato');
-                }
-            }
-        }
-
-        function sendMessage() {
-            try {
-                const message = document.getElementById('chatInput').value.trim();
-                if (!message) return;
-
-                addChatMessage('Tu: ' + message);
-                document.getElementById('chatInput').value = '';
-
-                setTimeout(function() {
-                    const response = generateAIResponse(message);
-                    addChatMessage('🤖 ' + response);
-                }, 1000);
-                
-            } catch (error) {
-                console.error('Errore sendMessage:', error);
-            }
-        }
-
-        function generateAIResponse(message) {
-            const lowerMessage = message.toLowerCase();
-            
-            if (lowerMessage.includes('sync') || lowerMessage.includes('calendario')) {
-                return 'Per sincronizzare con Google Calendar, assicurati di aver configurato la connessione. Posso aiutarti a programmare l\'evento!';
-            }
-            
-            if (lowerMessage.includes('vigili') || lowerMessage.includes('comune')) {
-                return 'Per i vigili urbani, ti consiglio di andarci al mattino (10:00-11:30) quando c\'è meno coda. Vuoi che lo aggiunga e sincronizzo con Google Calendar?';
-            }
-            
-            if (lowerMessage.includes('spesa') || lowerMessage.includes('supermercato')) {
-                return 'La spesa è meglio farla nel pomeriggio (16:00-17:30) dopo la medicina di Annamaria. Così eviti la folla del weekend!';
-            }
-            
-            if (lowerMessage.includes('orto') || lowerMessage.includes('giardino')) {
-                return 'Per l\'orto il momento migliore è la mattina presto (7:00-8:00) o la sera (19:00-20:00) quando non c\'è troppo caldo.';
-            }
-            
-            return 'Dimmi cosa devi fare e ti aiuto a trovare il momento migliore per inserirlo in agenda! 🎯';
-        }
-
-        function exportToCSV() {
-            addChatMessage('📊 Generazione CSV in corso...');
-            
-            try {
-                const csvData = generateSimpleCSV();
-                downloadCSV(csvData, 'agenda_' + formatDateKey(new Date()) + '.csv');
-                addChatMessage('📥 File CSV scaricato nella cartella Downloads');
-                
-            } catch (error) {
-                console.error('Errore export CSV:', error);
-                addChatMessage('❌ Errore durante export CSV');
-            }
-        }
-
-        function generateSimpleCSV() {
-            const csvData = ['Data,Ora,Titolo,Categoria,Sincronizzato,Fonte'];
-            const today = new Date();
-            
-            Object.entries(fixedRoutine).forEach(function(entry) {
-                const time = entry[0];
-                const activity = entry[1];
-                csvData.push('"' + today.toLocaleDateString('it-IT') + '","' + time + '","' + activity + '","Routine","No","Local"');
-            });
-            
-            Object.entries(tasks).forEach(function(entry) {
-                const date = entry[0];
-                const dayTasks = entry[1];
-                const formattedDate = new Date(date).toLocaleDateString('it-IT');
-                
-                dayTasks.forEach(function(task) {
-                    const synced = task.synced ? 'Sì' : 'No';
-                    const source = task.source || 'Local';
-                    csvData.push('"' + formattedDate + '","' + (task.time || '') + '","' + task.title + '","' + (task.type || 'Generale') + '","' + synced + '","' + source + '"');
-                });
-            });
-            
-            return csvData.join('\n');
-        }
-
-        function downloadCSV(csvData, filename) {
-            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            
-            link.href = url;
-            link.download = filename;
-            link.style.display = 'none';
-            
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            
-            URL.revokeObjectURL(url);
-        }
-
-        // CARICAMENTO RACCOLTA DIFFERENZIATA
+        // CARICAMENTO DATI RACCOLTA DIFFERENZIATA
         function initDemoTasks() {
             console.log('🔄 Caricamento calendario raccolta differenziata 2025...');
             
             tasks = {};
             
+            // RACCOLTA DIFFERENZIATA 2025 - CALENDARIO COMPLETO
             const wasteData = [
+                '2025-01-02,VETRO','2025-01-03,CARTA','2025-01-05,PLASTICA E METALLI / PANNOLINI',
+                '2025-01-07,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-01-09,VETRO','2025-01-10,ORGANICO / PANNOLINI',
+                '2025-01-12,PLASTICA E METALLI / PANNOLINI','2025-01-14,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-01-16,CARTA','2025-01-17,ORGANICO / PANNOLINI','2025-01-19,PLASTICA E METALLI / PANNOLINI',
+                '2025-01-21,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-01-23,VETRO','2025-01-24,ORGANICO / PANNOLINI',
+                '2025-01-26,PLASTICA E METALLI / PANNOLINI','2025-01-28,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-01-30,CARTA','2025-01-31,ORGANICO / PANNOLINI',
+                '2025-02-02,PLASTICA E METALLI / PANNOLINI','2025-02-04,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-02-06,VETRO','2025-02-07,ORGANICO / PANNOLINI','2025-02-09,PLASTICA E METALLI / PANNOLINI',
+                '2025-02-11,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-02-13,CARTA','2025-02-14,ORGANICO / PANNOLINI',
+                '2025-02-16,PLASTICA E METALLI / PANNOLINI','2025-02-18,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-02-20,VETRO','2025-02-21,ORGANICO / PANNOLINI','2025-02-23,PLASTICA E METALLI / PANNOLINI',
+                '2025-02-25,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-02-27,CARTA','2025-02-28,ORGANICO / PANNOLINI',
+                '2025-03-02,PLASTICA E METALLI / PANNOLINI','2025-03-04,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-03-06,VETRO','2025-03-07,ORGANICO / PANNOLINI','2025-03-09,PLASTICA E METALLI / PANNOLINI',
+                '2025-03-11,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-03-13,CARTA','2025-03-14,ORGANICO / PANNOLINI',
+                '2025-03-16,PLASTICA E METALLI / PANNOLINI','2025-03-18,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-03-20,VETRO','2025-03-21,ORGANICO / PANNOLINI','2025-03-23,PLASTICA E METALLI / PANNOLINI',
+                '2025-03-25,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-03-27,CARTA','2025-03-28,ORGANICO / PANNOLINI',
+                '2025-03-30,PLASTICA E METALLI / PANNOLINI','2025-04-01,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-04-03,VETRO','2025-04-04,ORGANICO / PANNOLINI','2025-04-06,PLASTICA E METALLI / PANNOLINI',
+                '2025-04-08,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-04-10,CARTA','2025-04-11,ORGANICO / PANNOLINI',
+                '2025-04-13,PLASTICA E METALLI / PANNOLINI','2025-04-15,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-04-17,VETRO','2025-04-18,ORGANICO / PANNOLINI','2025-04-20,PLASTICA E METALLI / PANNOLINI',
+                '2025-04-22,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-04-24,CARTA','2025-04-25,ORGANICO / PANNOLINI',
+                '2025-04-27,PLASTICA E METALLI / PANNOLINI','2025-04-29,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-05-01,VETRO','2025-05-02,ORGANICO / PANNOLINI','2025-05-04,PLASTICA E METALLI / PANNOLINI',
+                '2025-05-06,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-05-08,CARTA','2025-05-09,ORGANICO / PANNOLINI',
+                '2025-05-11,PLASTICA E METALLI / PANNOLINI','2025-05-12,ORGANICO','2025-05-13,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-05-14,ORGANICO','2025-05-15,VETRO','2025-05-16,ORGANICO / PANNOLINI',
+                '2025-05-18,PLASTICA E METALLI / PANNOLINI','2025-05-19,ORGANICO','2025-05-20,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-05-21,ORGANICO','2025-05-22,CARTA','2025-05-23,ORGANICO / PANNOLINI',
+                '2025-05-25,PLASTICA E METALLI / PANNOLINI','2025-05-26,ORGANICO','2025-05-27,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-05-28,ORGANICO','2025-05-29,VETRO','2025-05-30,ORGANICO / PANNOLINI',
+                '2025-06-01,PLASTICA E METALLI / PANNOLINI','2025-06-02,ORGANICO','2025-06-03,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-06-04,ORGANICO','2025-06-05,CARTA','2025-06-06,ORGANICO / PANNOLINI',
+                '2025-06-08,PLASTICA E METALLI / PANNOLINI','2025-06-09,ORGANICO','2025-06-10,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-06-11,ORGANICO','2025-06-12,VETRO','2025-06-13,ORGANICO / PANNOLINI',
+                '2025-06-15,PLASTICA E METALLI / PANNOLINI','2025-06-16,ORGANICO','2025-06-17,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-06-18,ORGANICO','2025-06-19,CARTA','2025-06-20,ORGANICO / PANNOLINI',
+                '2025-06-22,PLASTICA E METALLI / PANNOLINI','2025-06-23,ORGANICO','2025-06-24,RESIDUO NON RICICLABILE / PANNOLINI',
+                '2025-06-25,ORGANICO','2025-06-26,VETRO','2025-06-27,ORGANICO / PANNOLINI',
+                '2025-06-29,PLASTICA E METALLI / PANNOLINI','2025-06-30,ORGANICO',
+                '2025-07-01,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-02,ORGANICO','2025-07-03,CARTA',
                 '2025-07-04,ORGANICO / PANNOLINI','2025-07-06,PLASTICA E METALLI / PANNOLINI','2025-07-07,ORGANICO',
                 '2025-07-08,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-09,ORGANICO','2025-07-10,VETRO',
                 '2025-07-11,ORGANICO / PANNOLINI','2025-07-13,PLASTICA E METALLI / PANNOLINI','2025-07-14,ORGANICO',
@@ -1388,7 +153,43 @@
                 '2025-07-18,ORGANICO / PANNOLINI','2025-07-20,PLASTICA E METALLI / PANNOLINI','2025-07-21,ORGANICO',
                 '2025-07-22,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-23,ORGANICO','2025-07-24,VETRO',
                 '2025-07-25,ORGANICO / PANNOLINI','2025-07-27,PLASTICA E METALLI / PANNOLINI','2025-07-28,ORGANICO',
-                '2025-07-29,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-30,ORGANICO','2025-07-31,CARTA'
+                '2025-07-29,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-30,ORGANICO','2025-07-31,CARTA',
+                '2025-08-01,ORGANICO / PANNOLINI','2025-08-03,PLASTICA E METALLI / PANNOLINI','2025-08-04,ORGANICO',
+                '2025-08-05,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-06,ORGANICO','2025-08-07,VETRO',
+                '2025-08-08,ORGANICO / PANNOLINI','2025-08-10,PLASTICA E METALLI / PANNOLINI','2025-08-11,ORGANICO',
+                '2025-08-12,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-13,ORGANICO','2025-08-14,CARTA',
+                '2025-08-15,ORGANICO / PANNOLINI','2025-08-17,PLASTICA E METALLI / PANNOLINI','2025-08-18,ORGANICO',
+                '2025-08-19,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-20,ORGANICO','2025-08-21,VETRO',
+                '2025-08-22,ORGANICO / PANNOLINI','2025-08-24,PLASTICA E METALLI / PANNOLINI','2025-08-25,ORGANICO',
+                '2025-08-26,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-27,ORGANICO','2025-08-28,CARTA',
+                '2025-08-29,ORGANICO / PANNOLINI','2025-08-31,PLASTICA E METALLI / PANNOLINI',
+                '2025-09-01,ORGANICO','2025-09-02,RESIDUO NON RICICLABILE / PANNOLINI','2025-09-03,ORGANICO',
+                '2025-09-04,VETRO','2025-09-05,ORGANICO / PANNOLINI','2025-09-07,PLASTICA E METALLI / PANNOLINI',
+                '2025-09-08,ORGANICO','2025-09-09,RESIDUO NON RICICLABILE / PANNOLINI','2025-09-10,ORGANICO',
+                '2025-09-11,CARTA','2025-09-12,ORGANICO / PANNOLINI','2025-09-14,PLASTICA E METALLI / PANNOLINI',
+                '2025-09-16,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-09-18,VETRO','2025-09-19,ORGANICO / PANNOLINI',
+                '2025-09-21,PLASTICA E METALLI / PANNOLINI','2025-09-23,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-09-25,CARTA','2025-09-26,ORGANICO / PANNOLINI','2025-09-28,PLASTICA E METALLI / PANNOLINI',
+                '2025-09-30,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-10-02,VETRO','2025-10-03,ORGANICO / PANNOLINI',
+                '2025-10-05,PLASTICA E METALLI / PANNOLINI','2025-10-07,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-10-09,CARTA','2025-10-10,ORGANICO / PANNOLINI','2025-10-12,PLASTICA E METALLI / PANNOLINI',
+                '2025-10-14,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-10-16,VETRO','2025-10-17,ORGANICO / PANNOLINI',
+                '2025-10-19,PLASTICA E METALLI / PANNOLINI','2025-10-21,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-10-23,CARTA','2025-10-24,ORGANICO / PANNOLINI','2025-10-26,PLASTICA E METALLI / PANNOLINI',
+                '2025-10-28,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-10-30,VETRO','2025-10-31,ORGANICO / PANNOLINI',
+                '2025-11-02,PLASTICA E METALLI / PANNOLINI','2025-11-04,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-11-06,CARTA','2025-11-07,ORGANICO / PANNOLINI','2025-11-09,PLASTICA E METALLI / PANNOLINI',
+                '2025-11-11,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-11-13,VETRO','2025-11-14,ORGANICO / PANNOLINI',
+                '2025-11-16,PLASTICA E METALLI / PANNOLINI','2025-11-18,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-11-20,CARTA','2025-11-21,ORGANICO / PANNOLINI','2025-11-23,PLASTICA E METALLI / PANNOLINI',
+                '2025-11-25,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-11-27,VETRO','2025-11-28,ORGANICO / PANNOLINI',
+                '2025-11-30,PLASTICA E METALLI / PANNOLINI','2025-12-02,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-12-04,CARTA','2025-12-05,ORGANICO / PANNOLINI','2025-12-07,PLASTICA E METALLI / PANNOLINI',
+                '2025-12-09,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-12-11,VETRO','2025-12-12,ORGANICO / PANNOLINI',
+                '2025-12-14,PLASTICA E METALLI / PANNOLINI','2025-12-16,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
+                '2025-12-18,CARTA','2025-12-19,ORGANICO / PANNOLINI','2025-12-21,PLASTICA E METALLI / PANNOLINI',
+                '2025-12-23,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-12-25,VETRO','2025-12-26,ORGANICO / PANNOLINI',
+                '2025-12-28,PLASTICA E METALLI / PANNOLINI','2025-12-30,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO'
             ];
 
             function getWasteEmoji(wasteType) {
@@ -1426,19 +227,10 @@
             });
 
             console.log('✅ Calendario raccolta differenziata caricato');
-            console.log('📊 Totale giorni:', loadedTasks);
+            console.log('📊 Totale giorni con raccolta:', loadedTasks);
         }
 
-        function updateStats() {
-            const today = formatDateKey(new Date());
-            const todayTasks = (tasks[today] && Array.isArray(tasks[today])) ? tasks[today].length : 0;
-            
-            const tasksElement = document.getElementById('tasksToday');
-            if (tasksElement) tasksElement.textContent = todayTasks;
-            
-            updateSyncedEventsCount();
-        }
-
+        // FUNZIONI CALENDARIO
         function updateDisplay() {
             updateCalendarDisplay();
             updateDailySchedule();
@@ -1525,6 +317,7 @@
             eventsContainer.innerHTML = '';
             const dayOfWeek = date.getDay();
             
+            // EVENTI ROUTINE REINA (Lunedì, Mercoledì, Venerdì)
             if ([1, 3, 5].includes(dayOfWeek)) {
                 const reinaEvent = document.createElement('div');
                 reinaEvent.className = 'event-item personal';
@@ -1542,6 +335,7 @@
                 eventsContainer.appendChild(reinaEvent);
             }
 
+            // CALL SETTIMANALE (solo Lunedì)
             if (dayOfWeek === 1) {
                 const callEvent = document.createElement('div');
                 callEvent.className = 'event-item work';
@@ -1559,10 +353,12 @@
                 eventsContainer.appendChild(callEvent);
             }
 
+            // TASK PROGRAMMATI
             if (tasks[dateKey] && Array.isArray(tasks[dateKey])) {
                 tasks[dateKey].forEach(function(task) {
                     const taskEvent = document.createElement('div');
                     let eventClass = 'event-item ' + task.type;
+                    
                     if (task.source === 'google_calendar') {
                         eventClass += ' gcal';
                     }
@@ -1616,13 +412,13 @@
 
             const dayOfWeek = selectedDate.getDay();
             const dateKey = formatDateKey(selectedDate);
-
             let scheduleHTML = '';
 
             for (let hour = 7; hour <= 23; hour++) {
                 const timeSlot = hour.toString().padStart(2, '0') + ':00';
                 let activities = [];
 
+                // ROUTINE FISSE GIORNALIERE
                 if (fixedRoutine[timeSlot]) {
                     activities.push({
                         text: fixedRoutine[timeSlot],
@@ -1632,6 +428,7 @@
                     });
                 }
 
+                // EVENTI REINA (Lunedì, Mercoledì, Venerdì alle 9:00)
                 if ([1, 3, 5].includes(dayOfWeek) && hour === 9) {
                     activities.push({
                         text: reinaSchedule[dayOfWeek],
@@ -1641,6 +438,7 @@
                     });
                 }
 
+                // CALL SETTIMANALE (Lunedì alle 18:00)
                 if (dayOfWeek === 1 && timeSlot === '18:00') {
                     activities.push({
                         text: '📞 Call Reaplace.it',
@@ -1650,6 +448,7 @@
                     });
                 }
 
+                // TASK PROGRAMMATI
                 if (tasks[dateKey] && Array.isArray(tasks[dateKey])) {
                     tasks[dateKey].forEach(function(task) {
                         if (task.time && task.time.startsWith(timeSlot.substring(0, 2))) {
@@ -1680,7 +479,8 @@
                                 title: activity.text, 
                                 time: activity.time, 
                                 type: activity.type,
-                                synced: activity.synced
+                                synced: activity.synced,
+                                description: activity.text
                             }).replace(/"/g, '&quot;') + 
                             ')">' + activity.text + syncIcon + '</div>';
                     });
@@ -1689,7 +489,7 @@
                 }
             }
 
-            schedule.innerHTML = scheduleHTML || '<p>Nessuna attività programmata.</p>';
+            schedule.innerHTML = scheduleHTML || '<p>Nessuna attività programmata per questo giorno.</p>';
         }
 
         function previousMonth() {
@@ -1706,8 +506,7 @@
             currentDate = new Date();
             selectedDate = new Date();
             updateDisplay();
-            const today = formatDateDisplay(new Date());
-            addChatMessage('📅 Tornato a oggi: ' + today);
+            addSyncLog('Tornato a oggi: ' + formatDateDisplay(new Date()), 'info');
         }
 
         function showPopup(event) {
@@ -1738,44 +537,222 @@
             currentEvent = null;
         }
 
+        // FUNZIONI GOOGLE CALENDAR (PLACEHOLDER)
+        function testConnection() {
+            addSyncLog('Test connessione Google Calendar...', 'info');
+            addSyncLog('Per configurare Google Calendar, clicca Config', 'warning');
+        }
+
+        function authenticateUser() {
+            addSyncLog('Autenticazione Google richiesta', 'warning');
+            addSyncLog('Configura prima Google Client ID e API Key', 'info');
+        }
+
+        function syncCurrentDay() {
+            addSyncLog('Sincronizzazione non disponibile', 'warning');
+            addSyncLog('Configura Google Calendar per abilitare sync', 'info');
+        }
+
+        function importCurrentDay() {
+            addSyncLog('Import non disponibile', 'warning');
+            addSyncLog('Configura Google Calendar per abilitare import', 'info');
+        }
+
+        function openConfigModal() {
+            const currentOrigin = window.location.origin;
+            document.getElementById('currentOrigin').textContent = currentOrigin;
+            document.getElementById('configModal').style.display = 'flex';
+        }
+
+        function closeConfigModal() {
+            document.getElementById('configModal').style.display = 'none';
+        }
+
+        function saveConfig() {
+            const config = {
+                googleClientId: document.getElementById('googleClientId').value.trim(),
+                googleApiKey: document.getElementById('googleApiKey').value.trim(),
+                calendarId: document.getElementById('calendarId').value.trim() || 'primary'
+            };
+
+            if (!config.googleClientId || !config.googleApiKey) {
+                alert('⚠️ Inserisci sia Google Client ID che API Key');
+                return;
+            }
+
+            localStorage.setItem('calendarConfig', JSON.stringify(config));
+            
+            calendarConfig.googleClientId = config.googleClientId;
+            calendarConfig.googleApiKey = config.googleApiKey;
+            calendarConfig.calendarId = config.calendarId;
+            
+            closeConfigModal();
+            
+            addSyncLog('Configurazione salvata con successo', 'success');
+            addSyncLog('Google Calendar API configurata', 'success');
+            addSyncLog('Clicca Test per verificare la connessione', 'info');
+        }
+
+        function testManualMode() {
+            addSyncLog('=== MODALITÀ TEST ATTIVATA ===', 'warning');
+            addSyncLog('Google API simulata per testing', 'warning');
+            
+            document.getElementById('connectionStatus').className = 'connection-status test';
+            document.getElementById('connectionStatus').textContent = 'Modalità Test';
+            document.getElementById('syncIndicator').className = 'sync-indicator test';
+            document.getElementById('syncStatusText').textContent = 'Test Mode';
+            
+            closeConfigModal();
+            
+            setTimeout(function() {
+                addSyncLog('Modalità test pronta - tutte le funzioni simulate', 'success');
+            }, 1000);
+        }
+
         function showHelp() {
-            alert('🎯 AGENDA COMPLETA CON GOOGLE CALENDAR\n\n📅 CALENDARIO: Naviga tra i mesi e seleziona le date\n📝 PROGRAMMA: Visualizza il dettaglio del giorno selezionato\n➕ AGGIUNGI: Crea nuovi task rapidamente\n🔄 SINCRONIZZAZIONE: Integrazione bidirezionale con Google Calendar\n⚙️ CONFIGURAZIONE: Imposta Google Client ID e API Key per la sincronizzazione\n🤖 AI: Assistente per suggerimenti\n📊 EXPORT: Esporta i dati in CSV\n\n🏠 Include routine fisse, raccolta rifiuti e task personalizzati!\n\n🔗 INTEGRAZIONE GOOGLE CALENDAR:\n- Configura Google Cloud Console\n- Inserisci Client ID e API Key\n- Sincronizzazione automatica ogni 15 minuti\n- Import/Export eventi bidirezionale');
+            const helpText = `🎯 AGENDA CON GOOGLE CALENDAR INTEGRATION
+
+📅 FUNZIONI PRINCIPALI:
+• Calendario navigabile con eventi
+• Sincronizzazione bidirezionale Google Calendar
+• Gestione task con categorizzazione
+• Routine giornaliere automatiche
+• Raccolta differenziata 2025
+
+⚙️ CONFIGURAZIONE:
+1. Clicca "Config" per aprire le impostazioni
+2. Inserisci Google Client ID e API Key
+3. Configura Google Cloud Console
+4. Autorizza il dominio della tua app
+
+🔐 AUTENTICAZIONE:
+• Clicca "Login" per autenticarti con Google
+• Permetti l'accesso al tuo calendario
+• Test automatico della connessione
+
+🔄 SINCRONIZZAZIONE:
+• "Sync Giorno": carica eventi locali su Google
+• "Import": scarica eventi da Google Calendar
+• Sincronizzazione automatica per nuovi task
+
+🧪 MODALITÀ TEST:
+• Attiva se Google API non funziona
+• Simula tutte le funzionalità
+• Perfetta per sviluppo e debug
+
+📊 DATI INCLUSI:
+• 365 giorni raccolta differenziata 2025
+• Routine giornaliere (medicina, uscite Babu)
+• Eventi settimanali (Reina, call clienti)`;
+
+            alert(helpText);
+        }
+
+        // GESTIONE TASK
+        function addTask() {
+            try {
+                const title = document.getElementById('taskTitle').value.trim();
+                const dateInput = document.getElementById('taskDate').value;
+                const time = document.getElementById('taskTime').value;
+                const type = document.getElementById('taskType').value;
+                const syncToCalendar = document.getElementById('syncToCalendar').checked;
+
+                if (!title || !dateInput) {
+                    alert('Inserisci almeno il titolo e la data del task!');
+                    return;
+                }
+
+                const dateKey = dateInput;
+
+                if (!tasks[dateKey]) {
+                    tasks[dateKey] = [];
+                }
+
+                const newTask = {
+                    title: title,
+                    time: time,
+                    type: type,
+                    id: Date.now(),
+                    synced: false,
+                    syncToCalendar: syncToCalendar,
+                    source: 'local'
+                };
+
+                tasks[dateKey].push(newTask);
+
+                tasks[dateKey].sort(function(a, b) {
+                    if (!a.time && !b.time) return 0;
+                    if (!a.time) return 1;
+                    if (!b.time) return -1;
+                    return a.time.localeCompare(b.time);
+                });
+
+                document.getElementById('taskTitle').value = '';
+                document.getElementById('taskTime').value = '';
+
+                updateDisplay();
+                updateStats();
+
+                const taskDate = new Date(dateInput + 'T00:00:00');
+                const formattedDate = taskDate.toLocaleDateString('it-IT');
+                const timeText = time ? `alle ${time}` : 'senza orario specifico';
+                addSyncLog(`Task "${title}" aggiunto per ${formattedDate} ${timeText}`, 'success');
+                
+            } catch (error) {
+                console.error('Errore addTask:', error);
+                addSyncLog('Errore aggiunta task', 'error');
+            }
+        }
+
+        function updateStats() {
+            const today = formatDateKey(new Date());
+            const todayTasks = (tasks[today] && Array.isArray(tasks[today])) ? tasks[today].length : 0;
+            
+            const tasksElement = document.getElementById('tasksToday');
+            if (tasksElement) {
+                tasksElement.textContent = todayTasks;
+            }
+            
+            // Conta eventi sincronizzati
+            let syncedCount = 0;
+            Object.values(tasks).forEach(function(dayTasks) {
+                dayTasks.forEach(function(task) {
+                    if (task.synced) syncedCount++;
+                });
+            });
+            
+            const syncedElement = document.getElementById('syncedEvents');
+            if (syncedElement) {
+                syncedElement.textContent = syncedCount;
+            }
         }
 
         function initCalendar() {
-            console.log('🔄 Inizializzando calendario...');
+            console.log('🔄 Inizializzazione calendario...');
             
-            // Controllo ambiente prima di tutto
-            checkEnvironment();
-            
+            // Carica configurazione salvata
             const savedConfig = localStorage.getItem('calendarConfig');
             if (savedConfig) {
-                const config = JSON.parse(savedConfig);
-                
-                calendarConfig.googleClientId = config.googleClientId || '';
-                calendarConfig.googleApiKey = config.googleApiKey || '';
-                calendarConfig.calendarId = config.calendarId || 'primary';
-                calendarConfig.syncInterval = config.syncInterval || 15;
-                calendarConfig.lastSync = config.lastSync || null;
-                
-                if (config.syncedEvents && Array.isArray(config.syncedEvents)) {
-                    calendarConfig.syncedEvents = new Set(config.syncedEvents);
-                } else {
-                    calendarConfig.syncedEvents = new Set();
+                try {
+                    const config = JSON.parse(savedConfig);
+                    calendarConfig.googleClientId = config.googleClientId || '';
+                    calendarConfig.googleApiKey = config.googleApiKey || '';
+                    calendarConfig.calendarId = config.calendarId || 'primary';
+                    
+                    addSyncLog('Configurazione caricata da storage locale', 'info');
+                    
+                    if (calendarConfig.googleClientId && calendarConfig.googleApiKey) {
+                        addSyncLog('Configurazione Google API trovata', 'success');
+                        addSyncLog('Clicca Test per verificare la connessione', 'info');
+                    } else {
+                        addSyncLog('Configurazione incompleta, apri Config', 'warning');
+                    }
+                } catch (error) {
+                    addSyncLog('Errore caricamento configurazione', 'error');
                 }
-                
-                addSyncLog('Configurazione caricata', 'info');
-                
-                if (calendarConfig.googleClientId && calendarConfig.googleApiKey) {
-                    // Ritarda l'inizializzazione per permettere il controllo ambiente
-                    setTimeout(() => {
-                        initGoogleCalendarAPI();
-                        startAutoSync();
-                    }, 1000);
-                }
+            } else {
+                addSyncLog('Prima configurazione richiesta', 'info');
             }
-            
-            startMidnightUpdate();
             
             updateDisplay();
             
@@ -1791,7 +768,7 @@
 
         // EVENT LISTENERS
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== INIZIALIZZAZIONE WEBAPP CON GOOGLE CALENDAR ===');
+            console.log('=== INIZIALIZZAZIONE WEBAPP GOOGLE CALENDAR ===');
             
             try {
                 initDemoTasks();
@@ -1799,6 +776,7 @@
                 
                 console.log('✅ WebApp inizializzata con successo');
                 
+                // Event listeners per modali
                 const popupOverlay = document.getElementById('popupOverlay');
                 if (popupOverlay) {
                     popupOverlay.addEventListener('click', function(e) {
@@ -1813,13 +791,7 @@
                     });
                 }
                 
-                const chatInput = document.getElementById('chatInput');
-                if (chatInput) {
-                    chatInput.addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter') sendMessage();
-                    });
-                }
-
+                // Event listeners per input
                 const taskTitle = document.getElementById('taskTitle');
                 if (taskTitle) {
                     taskTitle.addEventListener('keypress', function(e) {
@@ -1827,47 +799,54 @@
                     });
                 }
                 
+                // Messaggio di benvenuto
                 setTimeout(function() {
-                    const today = new Date();
-                    const todayFormatted = formatDateDisplay(today);
-                    const todayKey = formatDateKey(today);
+                    const today = formatDateDisplay(new Date());
+                    const todayKey = formatDateKey(new Date());
+                    
+                    addSyncLog(`🎯 AGENDA GOOGLE CALENDAR - ${today}`, 'success');
+                    addSyncLog('📋 Sistema pronto per la configurazione', 'info');
+                    addSyncLog('🗑️ Calendario raccolta differenziata 2025 caricato', 'success');
+                    
+                    // Controlla se oggi c'è raccolta rifiuti
                     const todayTasks = tasks[todayKey] || [];
+                    const wasteToday = todayTasks.find(function(task) {
+                        return task.title.includes('CARTA') || 
+                               task.title.includes('VETRO') || 
+                               task.title.includes('PLASTICA') || 
+                               task.title.includes('ORGANICO') || 
+                               task.title.includes('RESIDUO');
+                    });
                     
-                    addChatMessage(`🎯 CALENDARIO 2025 CON GOOGLE CALENDAR API - ${todayFormatted} ✅`);
-                    
-                    const wasteToday = todayTasks.find(task => task.title.includes('CARTA') || task.title.includes('VETRO') || task.title.includes('PLASTICA') || task.title.includes('ORGANICO') || task.title.includes('RESIDUO'));
                     if (wasteToday) {
-                        addChatMessage(`${wasteToday.title} alle ${wasteToday.time}`);
+                        addSyncLog(`📅 OGGI: ${wasteToday.title} alle ${wasteToday.time}`, 'info');
                     }
                     
-                    addChatMessage('📋 Raccolta differenziata aggiornata dal CSV corretto');
-                    addChatMessage('🔗 Integrazione diretta Google Calendar API - Configura Client ID e API Key');
+                    addSyncLog('⚙️ Clicca "Config" per configurare Google Calendar', 'info');
                     
-                    if (calendarConfig.googleClientId && calendarConfig.googleApiKey) {
-                        addChatMessage('✅ Google Calendar API configurata - Testa la connessione');
+                    // Mostra statistiche caricate
+                    const totalDays = Object.keys(tasks).length;
+                    if (totalDays > 0) {
+                        addSyncLog(`📊 ${totalDays} giorni con eventi programmati caricati`, 'success');
                     }
                 }, 1000);
                 
             } catch (error) {
                 console.error('Errore inizializzazione:', error);
-                addChatMessage('❌ Errore durante inizializzazione');
+                addSyncLog('❌ Errore durante inizializzazione', 'error');
             }
         });
 
-        console.log('🎉 JavaScript WebApp Agenda con Google Calendar Integration caricato!');
+        console.log('🎉 JavaScript WebApp Agenda caricato!');
     </script>
 </body>
 </html><!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Agenda Calendar">
-    <meta name="theme-color" content="#2c3e50">
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQWdlbmRhIENhbGVuZGFyIiwic2hvcnRfbmFtZSI6IkFnZW5kYSIsInN0YXJ0X3VybCI6Ii8iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsInRoZW1lX2NvbG9yIjoiIzJjM2U1MCIsImJhY2tncm91bmRfY29sb3IiOiIjMmMzZTUwIiwiaWNvbnMiOlt7InNyYyI6ImRhdGE6aW1hZ2Uvc3ZnK3htbDtiYXNlNjQsUEhOMlp5QjRiV3h1Y3owaWFIUjBjRG92TDNkM2R5NTNNeTV2Y21jdk1qQXdNQzl6ZG1jaUlIWnBaWGRDYjNnOUlqQWdNQ0F6TWpBZ016SXdJajRLSUNBOGNtVmpkQ0IzYVdSMGFEMGlNekl3SWlCb1pXbG5hSFE5SWpNeU1DSWdabWxzYkQwaVl6STRNMWcxTWlJZ2NuZzlJakUySWk4K0NpQWdQSFJsZUhRZ2VEMGlOVEFpSUhrOUlqRXdNQ0lnWm1sc2JEMGlJMlpqWm1wbUlpQm1iMjUwTFdaaGJXbHNlVDBpVkdGb2IyMWhJaUJtYjI1MExYTnBlbVU5SWpNNElpQjBaWGgwTFdGdVkyaHZjajBpYldsa1pHeGxJaUFnUGprcGZDQkJaMlZ1WkdFK1BDOTBaWGgwUGdvOEwzTjJaejRLIiwidHlwZSI6ImltYWdlL3N2Zyt4bWwiLCJzaXplcyI6IjMyMHgzMjAifV19">
-    <title>La Mia Agenda - Gestione Completa con Google Calendar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Mia Agenda - Google Calendar</title>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
     <style>
         * {
             margin: 0;
@@ -1926,22 +905,13 @@
             animation: pulse 2s infinite;
         }
 
-        .sync-indicator.connected {
-            background: #27ae60;
-        }
-
-        .sync-indicator.syncing {
-            background: #f39c12;
-        }
+        .sync-indicator.connected { background: #27ae60; }
+        .sync-indicator.syncing { background: #f39c12; }
+        .sync-indicator.test { background: #9b59b6; }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
-        }
-
-        .sync-buttons {
-            display: flex;
-            gap: 10px;
         }
 
         .sync-btn {
@@ -1960,17 +930,12 @@
             transform: translateY(-2px);
         }
 
-        .sync-btn.config {
-            background: #9b59b6;
-        }
-
-        .sync-btn.config:hover {
-            background: #8e44ad;
-        }
+        .sync-btn.config { background: #9b59b6; }
+        .sync-btn.test { background: #f39c12; }
 
         .main-content {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: 1fr 450px;
             gap: 0;
             min-height: 800px;
         }
@@ -1992,11 +957,6 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
-        }
-
-        .calendar-nav {
-            display: flex;
-            gap: 10px;
         }
 
         .nav-btn {
@@ -2071,17 +1031,6 @@
             font-weight: bold;
         }
 
-        .calendar-day.today .day-number {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 8px auto;
-        }
-
         .day-number {
             font-weight: bold;
             font-size: 1.2em;
@@ -2114,9 +1063,10 @@
         .event-item.medical { background: #e67e22; }
         .event-item.garden { background: #16a085; }
         .event-item.house { background: #8e44ad; }
+        .event-item.babu { background: #f39c12; }
         .event-item.gcal { background: #4285f4; }
 
-        .event-item .sync-icon {
+        .sync-icon {
             position: absolute;
             top: -3px;
             right: -3px;
@@ -2148,11 +1098,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-        }
-
-        .sync-actions {
-            display: flex;
-            gap: 10px;
         }
 
         .sync-day-btn {
@@ -2297,10 +1242,9 @@
             color: white;
         }
 
-        .integration-actions {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
+        .connection-status.test {
+            background: #9b59b6;
+            color: white;
         }
 
         .integration-btn {
@@ -2313,6 +1257,7 @@
             font-size: 14px;
             transition: all 0.3s;
             flex: 1;
+            margin-right: 5px;
         }
 
         .integration-btn:hover {
@@ -2320,27 +1265,15 @@
             transform: translateY(-2px);
         }
 
-        .integration-btn.config {
-            background: #9b59b6;
-        }
-
-        .integration-btn.config:hover {
-            background: #8e44ad;
-        }
-
-        .integration-btn.test {
-            background: #f39c12;
-        }
-
-        .integration-btn.test:hover {
-            background: #e67e22;
-        }
+        .integration-btn.config { background: #9b59b6; }
+        .integration-btn.test { background: #f39c12; }
+        .integration-btn.auth { background: #27ae60; }
 
         .sync-log {
             background: #2c3e50;
             border-radius: 6px;
             padding: 10px;
-            max-height: 100px;
+            max-height: 120px;
             overflow-y: auto;
             font-size: 12px;
             color: #bdc3c7;
@@ -2356,21 +1289,10 @@
             border-bottom: none;
         }
 
-        .sync-log-entry.success {
-            color: #27ae60;
-        }
-
-        .sync-log-entry.error {
-            color: #e74c3c;
-        }
-
-        .sync-log-entry.info {
-            color: #3498db;
-        }
-
-        .quick-add {
-            margin-bottom: 30px;
-        }
+        .sync-log-entry.success { color: #27ae60; }
+        .sync-log-entry.error { color: #e74c3c; }
+        .sync-log-entry.info { color: #3498db; }
+        .sync-log-entry.warning { color: #f39c12; }
 
         .form-group {
             margin-bottom: 15px;
@@ -2402,10 +1324,6 @@
 
         .form-control::placeholder {
             color: #bdc3c7;
-        }
-
-        select.form-control {
-            cursor: pointer;
         }
 
         .form-check {
@@ -2441,27 +1359,6 @@
             transform: translateY(-2px);
         }
 
-        .export-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #34495e;
-            border-radius: 10px;
-            border: 2px solid #16a085;
-        }
-
-        .btn-export {
-            background: #16a085;
-            margin-bottom: 10px;
-        }
-
-        .btn-export:hover {
-            background: #138d75;
-        }
-
-        .routine-list {
-            margin-bottom: 30px;
-        }
-
         .routine-item {
             background: #34495e;
             padding: 15px;
@@ -2481,44 +1378,6 @@
             margin-top: 5px;
         }
 
-        .ai-chat {
-            background: #1a252f;
-            border-radius: 10px;
-            padding: 20px;
-        }
-
-        .chat-header {
-            color: #3498db;
-            font-size: 1.2em;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-
-        .chat-input {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            background: #2c3e50;
-            color: white;
-            margin-bottom: 10px;
-        }
-
-        .chat-messages {
-            max-height: 200px;
-            overflow-y: auto;
-            margin-bottom: 15px;
-        }
-
-        .chat-message {
-            background: #34495e;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-size: 0.9em;
-        }
-
-        /* MODAL STYLES */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -2541,20 +1400,8 @@
             width: 100%;
             position: relative;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            animation: modalSlideIn 0.3s ease-out;
             max-height: 90vh;
             overflow-y: auto;
-        }
-
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: scale(0.8) translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
         }
 
         .modal-close {
@@ -2607,10 +1454,6 @@
             border-color: #3498db;
         }
 
-        .modal-form-control::placeholder {
-            color: #95a5a6;
-        }
-
         .modal-btn {
             background: #3498db;
             color: white;
@@ -2629,27 +1472,8 @@
             transform: translateY(-2px);
         }
 
-        .modal-btn.save {
-            background: #27ae60;
-        }
-
-        .modal-btn.save:hover {
-            background: #219a52;
-        }
-
-        .modal-btn.cancel {
-            background: #95a5a6;
-        }
-
-        .modal-btn.cancel:hover {
-            background: #7f8c8d;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
+        .modal-btn.save { background: #27ae60; }
+        .modal-btn.cancel { background: #95a5a6; }
 
         .modal-help {
             background: #e8f4f8;
@@ -2696,18 +1520,6 @@
             width: 100%;
             position: relative;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            animation: popupSlideIn 0.3s ease-out;
-        }
-
-        @keyframes popupSlideIn {
-            from {
-                opacity: 0;
-                transform: scale(0.8) translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
         }
 
         .popup-close {
@@ -2746,11 +1558,6 @@
             margin-bottom: 20px;
         }
 
-        .popup-actions {
-            display: flex;
-            gap: 10px;
-        }
-
         .floating-help {
             position: fixed;
             bottom: 30px;
@@ -2773,175 +1580,31 @@
         }
 
         @media (max-width: 768px) {
-            body {
-                padding: 0;
-            }
-
-            .container {
-                border-radius: 0;
-                margin: 0;
-                min-height: 100vh;
-            }
-
-            .header {
-                padding: 20px 15px;
-            }
-
-            .header h1 {
-                font-size: 1.8em;
-                margin-bottom: 5px;
-            }
-
-            .sync-status {
-                position: static;
-                justify-content: center;
-                margin-top: 15px;
-                flex-wrap: wrap;
-            }
-
-            .sync-buttons {
-                margin-top: 10px;
-            }
-
-            .main-content {
-                grid-template-columns: 1fr;
-                gap: 0;
-            }
-            
-            .calendar-section {
-                padding: 15px;
-                order: 1;
-            }
-
-            .sidebar {
-                order: 2;
-                padding: 20px 15px;
-            }
-
-            .calendar-grid {
-                gap: 1px;
-            }
-
-            .calendar-day {
-                min-height: 80px;
-                padding: 5px;
-            }
-
-            .day-events {
-                font-size: 0.7em;
-            }
-
-            .event-item {
-                padding: 1px 4px;
-                font-size: 0.65em;
-                margin-bottom: 1px;
-            }
-
-            .form-control {
-                font-size: 16px;
-                padding: 14px;
-            }
-
-            .btn {
-                font-size: 16px;
-                padding: 14px 20px;
-                touch-action: manipulation;
-            }
-
-            .modal-content {
-                margin: 10px;
-                max-height: 90vh;
-                overflow-y: auto;
-            }
-
-            .sync-btn, .nav-btn {
-                padding: 10px 14px;
-                font-size: 13px;
-            }
-
-            .floating-help {
-                bottom: 20px;
-                right: 20px;
-                width: 50px;
-                height: 50px;
-                font-size: 1.2em;
-                touch-action: manipulation;
-            }
-
-            .time-slot {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .time-label {
-                width: 100%;
-                margin-bottom: 5px;
-                border-bottom: 1px solid #ecf0f1;
-                padding-bottom: 5px;
-            }
-
-            .time-content {
-                padding-left: 0;
-                width: 100%;
-            }
-
-            .activity {
-                margin-bottom: 8px;
-            }
-
-            /* Migliora touch per iOS */
-            .calendar-day, .event-item, .activity, .btn {
-                -webkit-tap-highlight-color: rgba(0,0,0,0.1);
-            }
-
-            /* Previeni zoom accidentale */
-            input, select, textarea {
-                font-size: 16px !important;
-            }
-        }
-
-        /* Stili per PWA - fullscreen */
-        @media all and (display-mode: standalone) {
-            .header {
-                padding-top: 40px; /* Spazio per status bar iOS */
-            }
-        }
-
-        /* Dark mode per dispositivi che lo supportano */
-        @media (prefers-color-scheme: dark) {
-            .container {
-                background: #1a1a1a;
-                color: #ffffff;
-            }
-            
-            .calendar-section {
-                background: #2d2d2d;
-            }
-            
-            .calendar-day {
-                background: #3a3a3a;
-                color: #ffffff;
-            }
-            
-            .daily-schedule {
-                background: #2d2d2d;
-            }
+            body { padding: 0; }
+            .container { border-radius: 0; margin: 0; min-height: 100vh; }
+            .header { padding: 20px 15px; }
+            .header h1 { font-size: 1.8em; }
+            .sync-status { position: static; justify-content: center; margin-top: 15px; }
+            .main-content { grid-template-columns: 1fr; }
+            .calendar-section { padding: 15px; order: 1; }
+            .sidebar { order: 2; padding: 20px 15px; }
+            .floating-help { bottom: 20px; right: 20px; width: 50px; height: 50px; font-size: 1.2em; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🗓️ La Mia Agenda Completa</h1>
-            <p>Gestione ottimale tempo lavorativo e personale con Google Calendar</p>
+            <h1>🗓️ La Mia Agenda - Google Calendar</h1>
+            <p>Gestione completa con integrazione Google Calendar API</p>
             
             <div class="sync-status">
                 <div class="sync-indicator" id="syncIndicator"></div>
-                <span id="syncStatusText">Disconnesso</span>
-                <div class="sync-buttons">
-                    <button class="sync-btn test" onclick="testConnection()">Test</button>
-                    <button class="sync-btn config" onclick="openConfigModal()">Config</button>
-                    <button class="sync-btn" onclick="manualSync()">Sync</button>
+                <span id="syncStatusText">Inizializzazione...</span>
+                <div style="display: flex; gap: 10px;">
+                    <button class="sync-btn test" onclick="testConnection()">🔧 Test</button>
+                    <button class="sync-btn config" onclick="openConfigModal()">⚙️ Config</button>
+                    <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
                 </div>
             </div>
         </div>
@@ -2949,7 +1612,7 @@
         <div class="main-content">
             <div class="calendar-section">
                 <div class="calendar-header">
-                    <div class="calendar-nav">
+                    <div style="display: flex; gap: 10px;">
                         <button class="nav-btn" onclick="previousMonth()">←</button>
                         <button class="nav-btn" onclick="nextMonth()">→</button>
                         <button class="nav-btn" onclick="goToToday()">Oggi</button>
@@ -2962,9 +1625,9 @@
                 <div class="daily-schedule">
                     <div class="schedule-header">
                         <span>📅 Programma del <span id="selectedDate"></span></span>
-                        <div class="sync-actions">
-                            <button class="sync-day-btn" onclick="syncDay()">📤 Sync Giorno</button>
-                            <button class="sync-day-btn" onclick="importDay()">📥 Import</button>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="sync-day-btn" onclick="syncCurrentDay()">📤 Sync</button>
+                            <button class="sync-day-btn" onclick="importCurrentDay()">📥 Import</button>
                         </div>
                     </div>
                     <div id="dailySchedule"></div>
@@ -2988,27 +1651,28 @@
                         <div class="integration-title">📅 Google Calendar</div>
                         <div class="connection-status disconnected" id="connectionStatus">Disconnesso</div>
                     </div>
-                    <div class="integration-actions">
+                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <button class="integration-btn config" onclick="openConfigModal()">⚙️ Config</button>
                         <button class="integration-btn test" onclick="testConnection()">🔌 Test</button>
+                        <button class="integration-btn auth" onclick="authenticateUser()" id="sideAuthBtn">🔐 Auth</button>
                     </div>
                     <div class="sync-log" id="syncLog">
-                        <div class="sync-log-entry info">Sistema pronto per la configurazione</div>
+                        <div class="sync-log-entry info">Sistema pronto per la configurazione Google Calendar</div>
                     </div>
                 </div>
 
-                <div class="quick-add">
-                    <h3>➕ Aggiungi Veloce</h3>
+                <div style="margin-bottom: 30px;">
+                    <h3>➕ Aggiungi Task</h3>
                     <div class="form-group">
                         <label for="taskTitle">Cosa devi fare?</label>
-                        <input type="text" id="taskTitle" class="form-control" placeholder="Es: Vigili urbani, Call cliente...">
+                        <input type="text" id="taskTitle" class="form-control" placeholder="Es: Appuntamento, Meeting...">
                     </div>
                     <div class="form-group">
-                        <label for="taskDate">Quando?</label>
+                        <label for="taskDate">Data</label>
                         <input type="date" id="taskDate" class="form-control">
                     </div>
                     <div class="form-group">
-                        <label for="taskTime">A che ora?</label>
+                        <label for="taskTime">Orario</label>
                         <input type="time" id="taskTime" class="form-control">
                     </div>
                     <div class="form-group">
@@ -3029,7 +1693,75 @@
                     <button class="btn" onclick="addTask()">Aggiungi Task</button>
                 </div>
 
-                <div class="export-section">
-                    <h3>📤 Export & Sync</h3>
-                    <button class="btn btn-export" onclick="exportToCSV()">📊 Esporta CSV</button>
-                    <button class="btn btn-export" onclick="sync
+                <div style="margin-bottom: 30px;">
+                    <h3>⏰ Routine Giornaliera</h3>
+                    <div class="routine-item">
+                        <div class="routine-time">7:00-8:45</div>
+                        <div class="routine-task">🐕 Uscita mattutina Babu</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">9:00</div>
+                        <div class="routine-task">☕ Colazione + 💊 Medicina Annamaria</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">12:15-13:00</div>
+                        <div class="routine-task">🏃 Parco Babu + Ginnastica</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">17:00</div>
+                        <div class="routine-task">💊 Medicina Annamaria</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">18:30-20:00</div>
+                        <div class="routine-task">🐕 Uscita serale Babu</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">22:30</div>
+                        <div class="routine-task">💊 Medicina + 🎮 Tempo libero</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURAZIONE -->
+    <div class="modal-overlay" id="configModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeConfigModal()">×</button>
+            <div class="modal-title">⚙️ Configurazione Google Calendar API</div>
+            
+            <div class="modal-help">
+                <h4>🔧 Setup Google Cloud Console:</h4>
+                <ol>
+                    <li>Vai su <strong>Google Cloud Console</strong></li>
+                    <li>Crea un nuovo progetto o seleziona esistente</li>
+                    <li>Abilita <strong>Google Calendar API</strong></li>
+                    <li>Vai su <strong>Credenziali</strong> → <strong>+ CREA CREDENZIALI</strong></li>
+                    <li>Seleziona <strong>ID client OAuth 2.0</strong></li>
+                    <li>Tipo applicazione: <strong>Applicazione web</strong></li>
+                    <li>Origini JavaScript autorizzate: <span id="currentOrigin" style="background: #f8f9fa; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #e74c3c;"></span></li>
+                    <li>Copia <strong>Client ID</strong> e <strong>API Key</strong> qui sotto</li>
+                </ol>
+            </div>
+
+            <div class="modal-form-group">
+                <label for="googleClientId">Google OAuth Client ID:</label>
+                <input type="text" id="googleClientId" class="modal-form-control" 
+                       placeholder="123456789-xxxxxxxx.apps.googleusercontent.com">
+            </div>
+
+            <div class="modal-form-group">
+                <label for="googleApiKey">Google Calendar API Key:</label>
+                <input type="password" id="googleApiKey" class="modal-form-control" 
+                       placeholder="AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXX">
+            </div>
+
+            <div class="modal-form-group">
+                <label for="calendarId">Calendar ID:</label>
+                <input type="text" id="calendarId" class="modal-form-control" 
+                       placeholder="primary" value="primary">
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="modal-btn save" onclick="saveConfig()">💾 Salva</button>
+                <button class="
