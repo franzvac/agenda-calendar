@@ -614,9 +614,10 @@
             <div class="sync-status">
                 <div class="sync-indicator" id="syncIndicator"></div>
                 <span id="syncStatusText">Inizializzazione...</span>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 8px;">
                     <button class="sync-btn" onclick="testGoogleAPI()">🔧 Test</button>
                     <button class="sync-btn" onclick="showDomainHelp()" style="background: #e67e22;">🔗 Domini</button>
+                    <button class="sync-btn" onclick="resetGoogleAPI()" style="background: #e74c3c;">🔄 Reset</button>
                     <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
                 </div>
             </div>
@@ -1662,33 +1663,60 @@
         function showDomainHelp() {
             const helpText = `🔗 CONFIGURAZIONE DOMINI GOOGLE CLOUD CONSOLE
 
-📍 DOMINI DA AGGIUNGERE:
+📍 DOMINIO DA AGGIUNGERE (SOLO QUESTO):
 • https://franzvac.github.io
-• https://franzvac.github.io/agenda-calendar
 
-🛠️ PROCEDURA PASSO-PASSO:
+❌ NON aggiungere percorsi completi come:
+• https://franzvac.github.io/agenda-calendar/ 
+
+🛠️ PROCEDURA CORRETTA:
 
 1️⃣ Vai su console.cloud.google.com
 2️⃣ Seleziona il tuo progetto
 3️⃣ Menu → API e servizi → Credenziali
 4️⃣ Clicca sul tuo OAuth 2.0 Client ID
 5️⃣ Nella sezione "Origini JavaScript autorizzate"
-6️⃣ Clicca "+ AGGIUNGI URI"
-7️⃣ Inserisci: https://franzvac.github.io
-8️⃣ Clicca "+ AGGIUNGI URI" di nuovo
-9️⃣ Inserisci: https://franzvac.github.io/agenda-calendar
-🔟 Clicca "SALVA"
+6️⃣ Assicurati che ci sia SOLO: https://franzvac.github.io
+7️⃣ Rimuovi eventuali altri domini di GitHub
+8️⃣ Clicca "SALVA"
 
-⏰ IMPORTANTE: Aspetta 5-10 minuti dopo aver salvato prima di riprovare!
+⏰ Aspetta 5-10 minuti dopo aver salvato!
 
-🔍 VERIFICA: Il dominio corrente è: ${window.location.origin}${window.location.pathname}`;
+🔧 RESET COMPLETO:
+Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F5).
+
+🔍 INFO DEBUG:
+• URL corrente: ${window.location.href}
+• Origin: ${window.location.origin}
+• Client ID: ${GOOGLE_CONFIG.clientId.substring(0, 20)}...`;
 
             alert(helpText);
             
-            addSyncLog('📋 Guida domini mostrata', 'info');
-            addSyncLog(`🔍 URL completo corrente: ${window.location.href}`, 'info');
-            addSyncLog(`🔍 Origin: ${window.location.origin}`, 'info');
-            addSyncLog(`🔍 Pathname: ${window.location.pathname}`, 'info');
+            addSyncLog('📋 Guida domini aggiornata mostrata', 'info');
+            addSyncLog(`🔍 Usa SOLO questo dominio: ${window.location.origin}`, 'warning');
+        }
+
+        function resetGoogleAPI() {
+            addSyncLog('🔄 Reset completo Google API...', 'warning');
+            
+            // Reset variabili
+            isGoogleAPILoaded = false;
+            isGISLoaded = false;
+            isGoogleAPIInitialized = false;
+            isUserAuthenticated = false;
+            tokenClient = null;
+            
+            // Reset token se presente
+            if (typeof gapi !== 'undefined' && gapi.client && gapi.client.getToken) {
+                gapi.client.setToken(null);
+            }
+            
+            updateConnectionStatus('disconnected', 'Reset completato');
+            addSyncLog('✅ Reset completato - Reinizializzazione...', 'success');
+            
+            setTimeout(() => {
+                initGoogleAPI();
+            }, 1000);
         }
 
         function showHelp() {
@@ -1830,10 +1858,9 @@
                 initDemoTasks();
                 initCalendar();
                 
-                // Inizializza Google API quando disponibile
-                addSyncLog('🔍 Controllo librerie Google...', 'info');
+                // Inizializza Google API moderne quando disponibili
+                addSyncLog('🔍 Controllo librerie Google moderne...', 'info');
                 
-                // Controlla se entrambe le librerie sono caricate
                 let attempts = 0;
                 const maxAttempts = 15;
                 
@@ -1846,7 +1873,7 @@
                     addSyncLog(`🔍 Tentativo ${attempts}/${maxAttempts} - GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, 'info');
                     
                     if (gapiOK && gisOK) {
-                        addSyncLog('✅ Tutte le librerie Google caricate!', 'success');
+                        addSyncLog('✅ Librerie Google moderne caricate!', 'success');
                         isGoogleAPILoaded = true;
                         isGISLoaded = true;
                         clearInterval(checkInterval);
