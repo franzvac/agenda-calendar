@@ -1,7 +1,728 @@
-<div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="modal-btn save" onclick="saveConfig()">💾 Salva</button>
-                <button class="modal-btn cancel" onclick="closeConfigModal()">❌ Annulla</button>
-                <button class="modal-btn" onclick="testManualMode()" style="background: #9b59b6;">🧪 Test</button>
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Mia Agenda - Google Calendar Integrata</title>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .sync-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .sync-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #e74c3c;
+            animation: pulse 2s infinite;
+        }
+
+        .sync-indicator.connected { background: #27ae60; }
+        .sync-indicator.syncing { background: #f39c12; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .sync-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .sync-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 450px;
+            gap: 0;
+            min-height: 800px;
+        }
+
+        .calendar-section {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .sidebar {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .nav-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .current-month {
+            font-size: 2em;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #bdc3c7;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .calendar-day-header {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .calendar-day {
+            background: white;
+            min-height: 120px;
+            padding: 10px;
+            border: 1px solid #ecf0f1;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: #e8f4fd;
+            transform: scale(1.02);
+        }
+
+        .calendar-day.selected {
+            background: #3498db;
+            color: white;
+        }
+
+        .calendar-day.other-month {
+            background: #f8f9fa;
+            color: #bdc3c7;
+        }
+
+        .calendar-day.today {
+            background: #f39c12;
+            color: white;
+            font-weight: bold;
+        }
+
+        .day-number {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 8px;
+        }
+
+        .day-events {
+            font-size: 0.8em;
+        }
+
+        .event-item {
+            background: #e74c3c;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .event-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .event-item.work { background: #3498db; }
+        .event-item.personal { background: #27ae60; }
+        .event-item.medical { background: #e67e22; }
+        .event-item.garden { background: #16a085; }
+        .event-item.house { background: #8e44ad; }
+        .event-item.babu { background: #f39c12; }
+        .event-item.gcal { background: #4285f4; }
+
+        .sync-icon {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            width: 8px;
+            height: 8px;
+            background: #27ae60;
+            border-radius: 50%;
+            border: 1px solid white;
+            display: none;
+        }
+
+        .event-item.synced .sync-icon {
+            display: block;
+        }
+
+        .daily-schedule {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .schedule-header {
+            font-size: 1.5em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sync-day-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .sync-day-btn:hover {
+            background: #229954;
+        }
+
+        .time-slot {
+            display: flex;
+            margin-bottom: 15px;
+            align-items: center;
+            padding: 10px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .time-slot:hover {
+            background: #f8f9fa;
+        }
+
+        .time-label {
+            width: 80px;
+            font-weight: bold;
+            color: #34495e;
+            font-size: 1.1em;
+        }
+
+        .time-content {
+            flex: 1;
+            padding-left: 15px;
+        }
+
+        .activity {
+            background: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            border-left: 4px solid #3498db;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .activity:hover {
+            background: #e8f4fd;
+            transform: translateX(5px);
+        }
+
+        .activity.fixed {
+            border-left-color: #e74c3c;
+            background: #fdf2f2;
+        }
+
+        .activity.flexible {
+            border-left-color: #27ae60;
+            background: #f2fdf2;
+        }
+
+        .activity.gcal {
+            border-left-color: #4285f4;
+            background: #e8f0fe;
+        }
+
+        .sidebar h3 {
+            color: #ecf0f1;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .stat-label {
+            color: #bdc3c7;
+            font-size: 0.9em;
+        }
+
+        .integration-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #34495e;
+            border-radius: 10px;
+            border: 2px solid #4285f4;
+        }
+
+        .integration-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .integration-title {
+            color: #4285f4;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .connection-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .connection-status.connected {
+            background: #27ae60;
+            color: white;
+        }
+
+        .connection-status.disconnected {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .connection-status.syncing {
+            background: #f39c12;
+            color: white;
+        }
+
+        .sync-log {
+            background: #2c3e50;
+            border-radius: 6px;
+            padding: 10px;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+
+        .sync-log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+            border-bottom: 1px solid #34495e;
+        }
+
+        .sync-log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .sync-log-entry.success { color: #27ae60; }
+        .sync-log-entry.error { color: #e74c3c; }
+        .sync-log-entry.info { color: #3498db; }
+        .sync-log-entry.warning { color: #f39c12; }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #ecf0f1;
+            font-weight: bold;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            background: #34495e;
+            color: white;
+            border: 2px solid transparent;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            background: #2c3e50;
+        }
+
+        .form-control::placeholder {
+            color: #bdc3c7;
+        }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .form-check input {
+            margin-right: 8px;
+        }
+
+        .form-check label {
+            color: #bdc3c7;
+            font-size: 14px;
+            margin-bottom: 0;
+        }
+
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #219a52;
+            transform: translateY(-2px);
+        }
+
+        .routine-item {
+            background: #34495e;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #f39c12;
+        }
+
+        .routine-time {
+            font-weight: bold;
+            color: #f39c12;
+            font-size: 1.1em;
+        }
+
+        .routine-task {
+            color: #ecf0f1;
+            margin-top: 5px;
+        }
+
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .popup-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #95a5a6;
+            transition: color 0.3s;
+        }
+
+        .popup-close:hover {
+            color: #e74c3c;
+        }
+
+        .popup-title {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .popup-time {
+            font-size: 1.2em;
+            color: #3498db;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .popup-description {
+            color: #34495e;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .floating-help {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5em;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+
+        .floating-help:hover {
+            transform: scale(1.1);
+            background: #2980b9;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 0; }
+            .container { border-radius: 0; margin: 0; min-height: 100vh; }
+            .header { padding: 20px 15px; }
+            .header h1 { font-size: 1.8em; }
+            .sync-status { position: static; justify-content: center; margin-top: 15px; }
+            .main-content { grid-template-columns: 1fr; }
+            .calendar-section { padding: 15px; order: 1; }
+            .sidebar { order: 2; padding: 20px 15px; }
+            .floating-help { bottom: 20px; right: 20px; width: 50px; height: 50px; font-size: 1.2em; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🗓️ La Mia Agenda Completa</h1>
+            <p>Sincronizzazione automatica con Google Calendar</p>
+            
+            <div class="sync-status">
+                <div class="sync-indicator" id="syncIndicator"></div>
+                <span id="syncStatusText">Inizializzazione...</span>
+                <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="calendar-section">
+                <div class="calendar-header">
+                    <div style="display: flex; gap: 10px;">
+                        <button class="nav-btn" onclick="previousMonth()">←</button>
+                        <button class="nav-btn" onclick="nextMonth()">→</button>
+                        <button class="nav-btn" onclick="goToToday()">Oggi</button>
+                    </div>
+                    <div class="current-month" id="currentMonth"></div>
+                </div>
+
+                <div class="calendar-grid" id="calendar"></div>
+
+                <div class="daily-schedule">
+                    <div class="schedule-header">
+                        <span>📅 Programma del <span id="selectedDate"></span></span>
+                        <div style="display: flex; gap: 10px;">
+                            <button class="sync-day-btn" onclick="syncCurrentDay()">📤 Sync</button>
+                            <button class="sync-day-btn" onclick="importCurrentDay()">📥 Import</button>
+                        </div>
+                    </div>
+                    <div id="dailySchedule"></div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="tasksToday">0</div>
+                        <div class="stat-label">Task Oggi</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="syncedEvents">0</div>
+                        <div class="stat-label">Eventi Sync</div>
+                    </div>
+                </div>
+
+                <div class="integration-section">
+                    <div class="integration-header">
+                        <div class="integration-title">📅 Google Calendar</div>
+                        <div class="connection-status disconnected" id="connectionStatus">Disconnesso</div>
+                    </div>
+                    <div class="sync-log" id="syncLog">
+                        <div class="sync-log-entry info">Sistema pronto per Google Calendar</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 30px;">
+                    <h3>➕ Aggiungi Task</h3>
+                    <div class="form-group">
+                        <label for="taskTitle">Cosa devi fare?</label>
+                        <input type="text" id="taskTitle" class="form-control" placeholder="Es: Appuntamento, Meeting...">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskDate">Data</label>
+                        <input type="date" id="taskDate" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskTime">Orario</label>
+                        <input type="time" id="taskTime" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="taskType">Categoria</label>
+                        <select id="taskType" class="form-control">
+                            <option value="work">💼 Lavoro</option>
+                            <option value="personal">👤 Personale</option>
+                            <option value="medical">💊 Cure Annamaria</option>
+                            <option value="garden">🌱 Orto/Giardino</option>
+                            <option value="house">🏠 Casa</option>
+                            <option value="babu">🐕 Babu</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" id="syncToCalendar" checked>
+                        <label for="syncToCalendar">Sincronizza con Google Calendar</label>
+                    </div>
+                    <button class="btn" onclick="addTask()">Aggiungi Task</button>
+                </div>
+
+                <div style="margin-bottom: 30px;">
+                    <h3>⏰ Routine Giornaliera</h3>
+                    <div class="routine-item">
+                        <div class="routine-time">7:00-8:45</div>
+                        <div class="routine-task">🐕 Uscita mattutina Babu</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">9:00</div>
+                        <div class="routine-task">☕ Colazione + 💊 Medicina Annamaria</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">12:15-13:00</div>
+                        <div class="routine-task">🏃 Parco Babu + Ginnastica</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">17:00</div>
+                        <div class="routine-task">💊 Medicina Annamaria</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">18:30-20:00</div>
+                        <div class="routine-task">🐕 Uscita serale Babu</div>
+                    </div>
+                    <div class="routine-item">
+                        <div class="routine-time">22:30</div>
+                        <div class="routine-task">💊 Medicina + 🎮 Tempo libero</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -19,20 +740,25 @@
     <button class="floating-help" onclick="showHelp()" title="Aiuto">❓</button>
 
     <script>
-        console.log('🚀 Caricamento WebApp Agenda...');
+        console.log('🚀 Caricamento WebApp Agenda con Google Calendar...');
+
+        // CONFIGURAZIONE GOOGLE CALENDAR (HARDCODED)
+        const GOOGLE_CONFIG = {
+            apiKey: 'AIzaSyBcNSqX0LryFhqzjFWHiq6hMV5S1a9LQfM',
+            clientId: '305495314465-j13l2f6scmoqvdadgsnvpskm89g5r6n0.apps.googleusercontent.com',
+            calendarId: 'i4fptt554sm1abp0fevv62al4s@group.calendar.google.com',
+            discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
+            scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
+        };
 
         // VARIABILI GLOBALI
         let currentDate = new Date();
         let selectedDate = new Date();
         let tasks = {};
         let currentEvent = null;
-
-        // CONFIGURAZIONE GOOGLE CALENDAR
-        const calendarConfig = {
-            googleClientId: '',
-            googleApiKey: '',
-            calendarId: 'primary'
-        };
+        let isGoogleAPILoaded = false;
+        let isGoogleAPIInitialized = false;
+        let isUserAuthenticated = false;
 
         // ROUTINE FISSE
         const fixedRoutine = {
@@ -84,13 +810,303 @@
                     container.appendChild(div);
                     container.scrollTop = container.scrollHeight;
                     
-                    if (container.children.length > 8) {
+                    if (container.children.length > 6) {
                         container.removeChild(container.firstChild);
                     }
                 }
                 console.log(`SYNC [${type.toUpperCase()}]:`, message);
             } catch (error) {
                 console.log(`SYNC [${type.toUpperCase()}]:`, message);
+            }
+        }
+
+        // FUNZIONI GOOGLE CALENDAR
+        function initGoogleAPI() {
+            addSyncLog('Inizializzazione Google Calendar API...', 'info');
+            
+            if (typeof gapi === 'undefined') {
+                addSyncLog('Google API non disponibile. Ricarica la pagina.', 'error');
+                updateConnectionStatus('disconnected', 'Google API non disponibile');
+                return;
+            }
+
+            updateConnectionStatus('syncing', 'Caricamento Google API...');
+
+            gapi.load('client:auth2', {
+                callback: function() {
+                    addSyncLog('Moduli Google API caricati', 'success');
+                    initGoogleClient();
+                },
+                onerror: function(error) {
+                    addSyncLog('Errore caricamento Google API', 'error');
+                    updateConnectionStatus('disconnected', 'Errore Google API');
+                }
+            });
+        }
+
+        function initGoogleClient() {
+            addSyncLog('Configurazione client Google Calendar...', 'info');
+            
+            gapi.client.init({
+                apiKey: GOOGLE_CONFIG.apiKey,
+                clientId: GOOGLE_CONFIG.clientId,
+                discoveryDocs: GOOGLE_CONFIG.discoveryDocs,
+                scope: GOOGLE_CONFIG.scopes
+            }).then(
+                function() {
+                    addSyncLog('Google Calendar API pronta', 'success');
+                    isGoogleAPIInitialized = true;
+                    
+                    const authInstance = gapi.auth2.getAuthInstance();
+                    if (authInstance) {
+                        isUserAuthenticated = authInstance.isSignedIn.get();
+                        
+                        if (isUserAuthenticated) {
+                            addSyncLog('Utente già autenticato', 'success');
+                            updateConnectionStatus('connected', 'Google Calendar connesso');
+                            loadGoogleCalendarEvents();
+                        } else {
+                            addSyncLog('Clicca Login per autenticarti', 'info');
+                            updateConnectionStatus('disconnected', 'Autenticazione richiesta');
+                        }
+                        
+                        authInstance.isSignedIn.listen(updateSignInStatus);
+                    }
+                },
+                function(error) {
+                    addSyncLog('Errore configurazione Google API', 'error');
+                    updateConnectionStatus('disconnected', 'Errore configurazione');
+                    console.error('Errore Google API:', error);
+                }
+            );
+        }
+
+        function updateSignInStatus(isSignedIn) {
+            isUserAuthenticated = isSignedIn;
+            if (isSignedIn) {
+                addSyncLog('Autenticazione completata', 'success');
+                updateConnectionStatus('connected', 'Google Calendar connesso');
+                loadGoogleCalendarEvents();
+            } else {
+                addSyncLog('Utente disconnesso', 'info');
+                updateConnectionStatus('disconnected', 'Autenticazione richiesta');
+            }
+        }
+
+        async function authenticateUser() {
+            if (!isGoogleAPIInitialized) {
+                addSyncLog('Google API non inizializzata', 'warning');
+                initGoogleAPI();
+                return;
+            }
+
+            try {
+                addSyncLog('Avvio autenticazione...', 'info');
+                const authInstance = gapi.auth2.getAuthInstance();
+                await authInstance.signIn();
+                addSyncLog('Autenticazione riuscita', 'success');
+            } catch (error) {
+                addSyncLog('Errore autenticazione: ' + error.error, 'error');
+                updateConnectionStatus('disconnected', 'Errore autenticazione');
+            }
+        }
+
+        async function loadGoogleCalendarEvents() {
+            if (!isUserAuthenticated) return;
+
+            addSyncLog('Caricamento eventi da Google Calendar...', 'info');
+            updateConnectionStatus('syncing', 'Sincronizzazione in corso...');
+
+            try {
+                const now = new Date();
+                const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+                const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: GOOGLE_CONFIG.calendarId,
+                    timeMin: timeMin,
+                    timeMax: timeMax,
+                    showDeleted: false,
+                    singleEvents: true,
+                    orderBy: 'startTime'
+                });
+
+                const events = response.result.items || [];
+                addSyncLog(`${events.length} eventi caricati da Google Calendar`, 'success');
+
+                // Integra eventi Google Calendar nei task locali
+                events.forEach(event => {
+                    const startDate = event.start.dateTime || event.start.date;
+                    const eventDate = new Date(startDate);
+                    const dateKey = formatDateKey(eventDate);
+                    
+                    if (!tasks[dateKey]) {
+                        tasks[dateKey] = [];
+                    }
+
+                    // Controlla se l'evento esiste già
+                    const existingEvent = tasks[dateKey].find(task => task.googleEventId === event.id);
+                    if (!existingEvent) {
+                        const eventTime = event.start.dateTime ? 
+                            new Date(event.start.dateTime).toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'}) : 
+                            '';
+
+                        tasks[dateKey].push({
+                            title: event.summary || 'Evento Google',
+                            time: eventTime,
+                            type: 'gcal',
+                            id: 'gcal_' + event.id,
+                            googleEventId: event.id,
+                            description: event.description || 'Evento da Google Calendar',
+                            synced: true,
+                            source: 'google_calendar'
+                        });
+                    }
+                });
+
+                // Ordina gli eventi per orario
+                Object.keys(tasks).forEach(dateKey => {
+                    tasks[dateKey].sort((a, b) => {
+                        if (!a.time && !b.time) return 0;
+                        if (!a.time) return 1;
+                        if (!b.time) return -1;
+                        return a.time.localeCompare(b.time);
+                    });
+                });
+
+                updateConnectionStatus('connected', 'Sincronizzazione completata');
+                updateDisplay();
+                updateStats();
+
+            } catch (error) {
+                addSyncLog('Errore caricamento eventi: ' + error.message, 'error');
+                updateConnectionStatus('connected', 'Errore caricamento eventi');
+            }
+        }
+
+        async function syncTaskToGoogle(task, dateKey) {
+            if (!isUserAuthenticated || !task.syncToCalendar) return false;
+
+            try {
+                const taskDate = new Date(dateKey + 'T00:00:00');
+                let startDateTime, endDateTime;
+
+                if (task.time) {
+                    const [hours, minutes] = task.time.split(':');
+                    startDateTime = new Date(taskDate);
+                    startDateTime.setHours(parseInt(hours), parseInt(minutes));
+                    endDateTime = new Date(startDateTime);
+                    endDateTime.setHours(startDateTime.getHours() + 1);
+                } else {
+                    startDateTime = taskDate;
+                    endDateTime = new Date(taskDate);
+                    endDateTime.setDate(endDateTime.getDate() + 1);
+                }
+
+                const event = {
+                    summary: task.title,
+                    description: task.description || 'Evento creato da Agenda Personale',
+                    start: task.time ? 
+                        { dateTime: startDateTime.toISOString() } : 
+                        { date: startDateTime.toISOString().split('T')[0] },
+                    end: task.time ? 
+                        { dateTime: endDateTime.toISOString() } : 
+                        { date: endDateTime.toISOString().split('T')[0] }
+                };
+
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: GOOGLE_CONFIG.calendarId,
+                    resource: event
+                });
+
+                if (response.result) {
+                    task.synced = true;
+                    task.googleEventId = response.result.id;
+                    addSyncLog(`Task "${task.title}" sincronizzato con Google Calendar`, 'success');
+                    return true;
+                }
+
+            } catch (error) {
+                addSyncLog(`Errore sincronizzazione "${task.title}": ${error.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function syncCurrentDay() {
+            if (!isUserAuthenticated) {
+                addSyncLog('Devi autenticarti prima di sincronizzare', 'warning');
+                return;
+            }
+
+            const dateKey = formatDateKey(selectedDate);
+            const dayTasks = tasks[dateKey] || [];
+            const unsyncedTasks = dayTasks.filter(task => !task.synced && task.source !== 'google_calendar');
+
+            if (unsyncedTasks.length === 0) {
+                addSyncLog('Nessun task da sincronizzare per questo giorno', 'info');
+                return;
+            }
+
+            addSyncLog(`Sincronizzazione di ${unsyncedTasks.length} task...`, 'info');
+            updateConnectionStatus('syncing', 'Sincronizzazione in corso...');
+
+            let syncedCount = 0;
+            for (const task of unsyncedTasks) {
+                if (await syncTaskToGoogle(task, dateKey)) {
+                    syncedCount++;
+                }
+            }
+
+            addSyncLog(`${syncedCount}/${unsyncedTasks.length} task sincronizzati`, 'success');
+            updateConnectionStatus('connected', 'Sincronizzazione completata');
+            updateDisplay();
+            updateStats();
+        }
+
+        async function importCurrentDay() {
+            if (!isUserAuthenticated) {
+                addSyncLog('Devi autenticarti prima di importare', 'warning');
+                return;
+            }
+
+            addSyncLog('Importazione eventi del giorno...', 'info');
+            await loadGoogleCalendarEvents();
+        }
+
+        function updateConnectionStatus(status, message = '') {
+            const statusElement = document.getElementById('connectionStatus');
+            const syncIndicator = document.getElementById('syncIndicator');
+            const syncStatusText = document.getElementById('syncStatusText');
+            const authBtn = document.getElementById('authBtn');
+            
+            if (statusElement) {
+                statusElement.className = `connection-status ${status}`;
+                
+                switch (status) {
+                    case 'connected':
+                        statusElement.textContent = 'Connesso';
+                        syncStatusText.textContent = 'Google Calendar Connesso';
+                        syncIndicator.className = 'sync-indicator connected';
+                        authBtn.textContent = '✅ Connesso';
+                        authBtn.disabled = true;
+                        break;
+                    case 'disconnected':
+                        statusElement.textContent = 'Disconnesso';
+                        syncStatusText.textContent = 'Non connesso';
+                        syncIndicator.className = 'sync-indicator';
+                        authBtn.textContent = '🔐 Login';
+                        authBtn.disabled = false;
+                        break;
+                    case 'syncing':
+                        statusElement.textContent = 'Sincronizzazione...';
+                        syncStatusText.textContent = 'Sincronizzazione...';
+                        syncIndicator.className = 'sync-indicator syncing';
+                        break;
+                }
+            }
+            
+            if (message) {
+                addSyncLog(message, status === 'connected' ? 'success' : status === 'error' ? 'error' : 'info');
             }
         }
 
@@ -537,113 +1553,31 @@
             currentEvent = null;
         }
 
-        // FUNZIONI GOOGLE CALENDAR (PLACEHOLDER)
-        function testConnection() {
-            addSyncLog('Test connessione Google Calendar...', 'info');
-            addSyncLog('Per configurare Google Calendar, clicca Config', 'warning');
-        }
-
-        function authenticateUser() {
-            addSyncLog('Autenticazione Google richiesta', 'warning');
-            addSyncLog('Configura prima Google Client ID e API Key', 'info');
-        }
-
-        function syncCurrentDay() {
-            addSyncLog('Sincronizzazione non disponibile', 'warning');
-            addSyncLog('Configura Google Calendar per abilitare sync', 'info');
-        }
-
-        function importCurrentDay() {
-            addSyncLog('Import non disponibile', 'warning');
-            addSyncLog('Configura Google Calendar per abilitare import', 'info');
-        }
-
-        function openConfigModal() {
-            const currentOrigin = window.location.origin;
-            document.getElementById('currentOrigin').textContent = currentOrigin;
-            document.getElementById('configModal').style.display = 'flex';
-        }
-
-        function closeConfigModal() {
-            document.getElementById('configModal').style.display = 'none';
-        }
-
-        function saveConfig() {
-            const config = {
-                googleClientId: document.getElementById('googleClientId').value.trim(),
-                googleApiKey: document.getElementById('googleApiKey').value.trim(),
-                calendarId: document.getElementById('calendarId').value.trim() || 'primary'
-            };
-
-            if (!config.googleClientId || !config.googleApiKey) {
-                alert('⚠️ Inserisci sia Google Client ID che API Key');
-                return;
-            }
-
-            localStorage.setItem('calendarConfig', JSON.stringify(config));
-            
-            calendarConfig.googleClientId = config.googleClientId;
-            calendarConfig.googleApiKey = config.googleApiKey;
-            calendarConfig.calendarId = config.calendarId;
-            
-            closeConfigModal();
-            
-            addSyncLog('Configurazione salvata con successo', 'success');
-            addSyncLog('Google Calendar API configurata', 'success');
-            addSyncLog('Clicca Test per verificare la connessione', 'info');
-        }
-
-        function testManualMode() {
-            addSyncLog('=== MODALITÀ TEST ATTIVATA ===', 'warning');
-            addSyncLog('Google API simulata per testing', 'warning');
-            
-            document.getElementById('connectionStatus').className = 'connection-status test';
-            document.getElementById('connectionStatus').textContent = 'Modalità Test';
-            document.getElementById('syncIndicator').className = 'sync-indicator test';
-            document.getElementById('syncStatusText').textContent = 'Test Mode';
-            
-            closeConfigModal();
-            
-            setTimeout(function() {
-                addSyncLog('Modalità test pronta - tutte le funzioni simulate', 'success');
-            }, 1000);
-        }
-
         function showHelp() {
-            const helpText = `🎯 AGENDA CON GOOGLE CALENDAR INTEGRATION
+            const helpText = `🎯 AGENDA CON GOOGLE CALENDAR
 
 📅 FUNZIONI PRINCIPALI:
 • Calendario navigabile con eventi
-• Sincronizzazione bidirezionale Google Calendar
+• Sincronizzazione automatica Google Calendar
 • Gestione task con categorizzazione
 • Routine giornaliere automatiche
 • Raccolta differenziata 2025
 
-⚙️ CONFIGURAZIONE:
-1. Clicca "Config" per aprire le impostazioni
-2. Inserisci Google Client ID e API Key
-3. Configura Google Cloud Console
-4. Autorizza il dominio della tua app
-
 🔐 AUTENTICAZIONE:
-• Clicca "Login" per autenticarti con Google
+• Clicca "Login" per connetterti a Google
 • Permetti l'accesso al tuo calendario
-• Test automatico della connessione
+• Sincronizzazione automatica
 
 🔄 SINCRONIZZAZIONE:
-• "Sync Giorno": carica eventi locali su Google
+• "Sync": carica eventi locali su Google
 • "Import": scarica eventi da Google Calendar
-• Sincronizzazione automatica per nuovi task
-
-🧪 MODALITÀ TEST:
-• Attiva se Google API non funziona
-• Simula tutte le funzionalità
-• Perfetta per sviluppo e debug
+• Checkbox per auto-sync nuovi task
 
 📊 DATI INCLUSI:
 • 365 giorni raccolta differenziata 2025
 • Routine giornaliere (medicina, uscite Babu)
-• Eventi settimanali (Reina, call clienti)`;
+• Eventi settimanali (Reina, call clienti)
+• Eventi Google Calendar integrati`;
 
             alert(helpText);
         }
@@ -680,12 +1614,18 @@
 
                 tasks[dateKey].push(newTask);
 
+                // Ordina i task per orario
                 tasks[dateKey].sort(function(a, b) {
                     if (!a.time && !b.time) return 0;
                     if (!a.time) return 1;
                     if (!b.time) return -1;
                     return a.time.localeCompare(b.time);
                 });
+
+                // Sincronizza automaticamente se richiesto e utente autenticato
+                if (syncToCalendar && isUserAuthenticated) {
+                    syncTaskToGoogle(newTask, dateKey);
+                }
 
                 document.getElementById('taskTitle').value = '';
                 document.getElementById('taskTime').value = '';
@@ -716,9 +1656,11 @@
             // Conta eventi sincronizzati
             let syncedCount = 0;
             Object.values(tasks).forEach(function(dayTasks) {
-                dayTasks.forEach(function(task) {
-                    if (task.synced) syncedCount++;
-                });
+                if (Array.isArray(dayTasks)) {
+                    dayTasks.forEach(function(task) {
+                        if (task.synced) syncedCount++;
+                    });
+                }
             });
             
             const syncedElement = document.getElementById('syncedEvents');
@@ -729,30 +1671,6 @@
 
         function initCalendar() {
             console.log('🔄 Inizializzazione calendario...');
-            
-            // Carica configurazione salvata
-            const savedConfig = localStorage.getItem('calendarConfig');
-            if (savedConfig) {
-                try {
-                    const config = JSON.parse(savedConfig);
-                    calendarConfig.googleClientId = config.googleClientId || '';
-                    calendarConfig.googleApiKey = config.googleApiKey || '';
-                    calendarConfig.calendarId = config.calendarId || 'primary';
-                    
-                    addSyncLog('Configurazione caricata da storage locale', 'info');
-                    
-                    if (calendarConfig.googleClientId && calendarConfig.googleApiKey) {
-                        addSyncLog('Configurazione Google API trovata', 'success');
-                        addSyncLog('Clicca Test per verificare la connessione', 'info');
-                    } else {
-                        addSyncLog('Configurazione incompleta, apri Config', 'warning');
-                    }
-                } catch (error) {
-                    addSyncLog('Errore caricamento configurazione', 'error');
-                }
-            } else {
-                addSyncLog('Prima configurazione richiesta', 'info');
-            }
             
             updateDisplay();
             
@@ -766,7 +1684,7 @@
             console.log('✅ Calendario inizializzato');
         }
 
-        // EVENT LISTENERS
+        // EVENT LISTENERS E INIZIALIZZAZIONE
         document.addEventListener('DOMContentLoaded', function() {
             console.log('=== INIZIALIZZAZIONE WEBAPP GOOGLE CALENDAR ===');
             
@@ -774,20 +1692,28 @@
                 initDemoTasks();
                 initCalendar();
                 
+                // Inizializza Google API quando disponibile
+                if (typeof gapi !== 'undefined') {
+                    setTimeout(() => initGoogleAPI(), 1000);
+                } else {
+                    addSyncLog('Google API in caricamento...', 'info');
+                    // Retry dopo un po'
+                    setTimeout(() => {
+                        if (typeof gapi !== 'undefined') {
+                            initGoogleAPI();
+                        } else {
+                            addSyncLog('Google API non disponibile. Ricarica la pagina.', 'warning');
+                        }
+                    }, 3000);
+                }
+                
                 console.log('✅ WebApp inizializzata con successo');
                 
-                // Event listeners per modali
+                // Event listeners per popup
                 const popupOverlay = document.getElementById('popupOverlay');
                 if (popupOverlay) {
                     popupOverlay.addEventListener('click', function(e) {
                         if (e.target === this) closePopup();
-                    });
-                }
-                
-                const configModal = document.getElementById('configModal');
-                if (configModal) {
-                    configModal.addEventListener('click', function(e) {
-                        if (e.target === this) closeConfigModal();
                     });
                 }
                 
@@ -805,7 +1731,7 @@
                     const todayKey = formatDateKey(new Date());
                     
                     addSyncLog(`🎯 AGENDA GOOGLE CALENDAR - ${today}`, 'success');
-                    addSyncLog('📋 Sistema pronto per la configurazione', 'info');
+                    addSyncLog('📋 Sistema inizializzato correttamente', 'info');
                     addSyncLog('🗑️ Calendario raccolta differenziata 2025 caricato', 'success');
                     
                     // Controlla se oggi c'è raccolta rifiuti
@@ -822,14 +1748,14 @@
                         addSyncLog(`📅 OGGI: ${wasteToday.title} alle ${wasteToday.time}`, 'info');
                     }
                     
-                    addSyncLog('⚙️ Clicca "Config" per configurare Google Calendar', 'info');
-                    
                     // Mostra statistiche caricate
                     const totalDays = Object.keys(tasks).length;
                     if (totalDays > 0) {
-                        addSyncLog(`📊 ${totalDays} giorni con eventi programmati caricati`, 'success');
+                        addSyncLog(`📊 ${totalDays} giorni con eventi programmati`, 'success');
                     }
-                }, 1000);
+                    
+                    addSyncLog('🔐 Clicca "Login" per connettere Google Calendar', 'info');
+                }, 1500);
                 
             } catch (error) {
                 console.error('Errore inizializzazione:', error);
@@ -837,931 +1763,13 @@
             }
         });
 
-        console.log('🎉 JavaScript WebApp Agenda caricato!');
+        // Gestione caricamento Google API
+        window.gapiLoaded = function() {
+            addSyncLog('Google API caricata', 'success');
+            setTimeout(() => initGoogleAPI(), 500);
+        };
+
+        console.log('🎉 JavaScript WebApp Agenda con Google Calendar caricato!');
     </script>
 </body>
-</html><!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Mia Agenda - Google Calendar</title>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-            position: relative;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
-        .sync-status {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .sync-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #e74c3c;
-            animation: pulse 2s infinite;
-        }
-
-        .sync-indicator.connected { background: #27ae60; }
-        .sync-indicator.syncing { background: #f39c12; }
-        .sync-indicator.test { background: #9b59b6; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        .sync-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-
-        .sync-btn:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
-
-        .sync-btn.config { background: #9b59b6; }
-        .sync-btn.test { background: #f39c12; }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 450px;
-            gap: 0;
-            min-height: 800px;
-        }
-
-        .calendar-section {
-            padding: 30px;
-            background: #f8f9fa;
-        }
-
-        .sidebar {
-            background: #2c3e50;
-            color: white;
-            padding: 30px;
-            overflow-y: auto;
-        }
-
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-
-        .nav-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: all 0.3s;
-        }
-
-        .nav-btn:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
-
-        .current-month {
-            font-size: 2em;
-            font-weight: bold;
-            color: #2c3e50;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-            background: #bdc3c7;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-
-        .calendar-day-header {
-            background: #34495e;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-
-        .calendar-day {
-            background: white;
-            min-height: 120px;
-            padding: 10px;
-            border: 1px solid #ecf0f1;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
-        }
-
-        .calendar-day:hover {
-            background: #e8f4fd;
-            transform: scale(1.02);
-        }
-
-        .calendar-day.selected {
-            background: #3498db;
-            color: white;
-        }
-
-        .calendar-day.other-month {
-            background: #f8f9fa;
-            color: #bdc3c7;
-        }
-
-        .calendar-day.today {
-            background: #f39c12;
-            color: white;
-            font-weight: bold;
-        }
-
-        .day-number {
-            font-weight: bold;
-            font-size: 1.2em;
-            margin-bottom: 8px;
-        }
-
-        .day-events {
-            font-size: 0.8em;
-        }
-
-        .event-item {
-            background: #e74c3c;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-bottom: 2px;
-            font-size: 0.75em;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .event-item:hover {
-            transform: scale(1.05);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .event-item.work { background: #3498db; }
-        .event-item.personal { background: #27ae60; }
-        .event-item.medical { background: #e67e22; }
-        .event-item.garden { background: #16a085; }
-        .event-item.house { background: #8e44ad; }
-        .event-item.babu { background: #f39c12; }
-        .event-item.gcal { background: #4285f4; }
-
-        .sync-icon {
-            position: absolute;
-            top: -3px;
-            right: -3px;
-            width: 8px;
-            height: 8px;
-            background: #27ae60;
-            border-radius: 50%;
-            border: 1px solid white;
-            display: none;
-        }
-
-        .event-item.synced .sync-icon {
-            display: block;
-        }
-
-        .daily-schedule {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .schedule-header {
-            font-size: 1.5em;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .sync-day-btn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
-
-        .sync-day-btn:hover {
-            background: #229954;
-        }
-
-        .time-slot {
-            display: flex;
-            margin-bottom: 15px;
-            align-items: center;
-            padding: 10px;
-            border-radius: 8px;
-            transition: all 0.3s;
-        }
-
-        .time-slot:hover {
-            background: #f8f9fa;
-        }
-
-        .time-label {
-            width: 80px;
-            font-weight: bold;
-            color: #34495e;
-            font-size: 1.1em;
-        }
-
-        .time-content {
-            flex: 1;
-            padding-left: 15px;
-        }
-
-        .activity {
-            background: #ecf0f1;
-            padding: 8px 12px;
-            border-radius: 6px;
-            margin-bottom: 5px;
-            border-left: 4px solid #3498db;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .activity:hover {
-            background: #e8f4fd;
-            transform: translateX(5px);
-        }
-
-        .activity.fixed {
-            border-left-color: #e74c3c;
-            background: #fdf2f2;
-        }
-
-        .activity.flexible {
-            border-left-color: #27ae60;
-            background: #f2fdf2;
-        }
-
-        .activity.gcal {
-            border-left-color: #4285f4;
-            background: #e8f0fe;
-        }
-
-        .sidebar h3 {
-            color: #ecf0f1;
-            margin-bottom: 20px;
-            font-size: 1.3em;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: #34495e;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 2em;
-            font-weight: bold;
-            color: #3498db;
-        }
-
-        .stat-label {
-            color: #bdc3c7;
-            font-size: 0.9em;
-        }
-
-        .integration-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #34495e;
-            border-radius: 10px;
-            border: 2px solid #4285f4;
-        }
-
-        .integration-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .integration-title {
-            color: #4285f4;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-
-        .connection-status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        .connection-status.connected {
-            background: #27ae60;
-            color: white;
-        }
-
-        .connection-status.disconnected {
-            background: #e74c3c;
-            color: white;
-        }
-
-        .connection-status.test {
-            background: #9b59b6;
-            color: white;
-        }
-
-        .integration-btn {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-            flex: 1;
-            margin-right: 5px;
-        }
-
-        .integration-btn:hover {
-            background: #3367d6;
-            transform: translateY(-2px);
-        }
-
-        .integration-btn.config { background: #9b59b6; }
-        .integration-btn.test { background: #f39c12; }
-        .integration-btn.auth { background: #27ae60; }
-
-        .sync-log {
-            background: #2c3e50;
-            border-radius: 6px;
-            padding: 10px;
-            max-height: 120px;
-            overflow-y: auto;
-            font-size: 12px;
-            color: #bdc3c7;
-        }
-
-        .sync-log-entry {
-            margin-bottom: 5px;
-            padding: 2px 0;
-            border-bottom: 1px solid #34495e;
-        }
-
-        .sync-log-entry:last-child {
-            border-bottom: none;
-        }
-
-        .sync-log-entry.success { color: #27ae60; }
-        .sync-log-entry.error { color: #e74c3c; }
-        .sync-log-entry.info { color: #3498db; }
-        .sync-log-entry.warning { color: #f39c12; }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #ecf0f1;
-            font-weight: bold;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            background: #34495e;
-            color: white;
-            border: 2px solid transparent;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #3498db;
-            background: #2c3e50;
-        }
-
-        .form-control::placeholder {
-            color: #bdc3c7;
-        }
-
-        .form-check {
-            display: flex;
-            align-items: center;
-            margin-top: 10px;
-        }
-
-        .form-check input {
-            margin-right: 8px;
-        }
-
-        .form-check label {
-            color: #bdc3c7;
-            font-size: 14px;
-            margin-bottom: 0;
-        }
-
-        .btn {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            width: 100%;
-            transition: all 0.3s;
-        }
-
-        .btn:hover {
-            background: #219a52;
-            transform: translateY(-2px);
-        }
-
-        .routine-item {
-            background: #34495e;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border-left: 4px solid #f39c12;
-        }
-
-        .routine-time {
-            font-weight: bold;
-            color: #f39c12;
-            font-size: 1.1em;
-        }
-
-        .routine-task {
-            color: #ecf0f1;
-            margin-top: 5px;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            padding: 20px;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 600px;
-            width: 100%;
-            position: relative;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 1.5em;
-            cursor: pointer;
-            color: #95a5a6;
-            transition: color 0.3s;
-        }
-
-        .modal-close:hover {
-            color: #e74c3c;
-        }
-
-        .modal-title {
-            font-size: 1.5em;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .modal-form-group {
-            margin-bottom: 20px;
-        }
-
-        .modal-form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #2c3e50;
-            font-weight: bold;
-        }
-
-        .modal-form-control {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #bdc3c7;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #2c3e50;
-            transition: border-color 0.3s;
-        }
-
-        .modal-form-control:focus {
-            outline: none;
-            border-color: #3498db;
-        }
-
-        .modal-btn {
-            background: #3498db;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        .modal-btn:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-        }
-
-        .modal-btn.save { background: #27ae60; }
-        .modal-btn.cancel { background: #95a5a6; }
-
-        .modal-help {
-            background: #e8f4f8;
-            border: 1px solid #bee5eb;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            font-size: 14px;
-            color: #0c5460;
-        }
-
-        .modal-help h4 {
-            margin-bottom: 10px;
-            color: #0c5460;
-        }
-
-        .modal-help ol {
-            margin-left: 20px;
-        }
-
-        .modal-help li {
-            margin-bottom: 5px;
-        }
-
-        .popup-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-
-        .popup-content {
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            max-width: 400px;
-            width: 100%;
-            position: relative;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-        }
-
-        .popup-close {
-            position: absolute;
-            top: 15px;
-            right: 20px;
-            background: none;
-            border: none;
-            font-size: 1.5em;
-            cursor: pointer;
-            color: #95a5a6;
-            transition: color 0.3s;
-        }
-
-        .popup-close:hover {
-            color: #e74c3c;
-        }
-
-        .popup-title {
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 15px;
-        }
-
-        .popup-time {
-            font-size: 1.2em;
-            color: #3498db;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .popup-description {
-            color: #34495e;
-            line-height: 1.6;
-            margin-bottom: 20px;
-        }
-
-        .floating-help {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            background: #3498db;
-            color: white;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            border: none;
-            cursor: pointer;
-            font-size: 1.5em;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            transition: all 0.3s;
-        }
-
-        .floating-help:hover {
-            transform: scale(1.1);
-            background: #2980b9;
-        }
-
-        @media (max-width: 768px) {
-            body { padding: 0; }
-            .container { border-radius: 0; margin: 0; min-height: 100vh; }
-            .header { padding: 20px 15px; }
-            .header h1 { font-size: 1.8em; }
-            .sync-status { position: static; justify-content: center; margin-top: 15px; }
-            .main-content { grid-template-columns: 1fr; }
-            .calendar-section { padding: 15px; order: 1; }
-            .sidebar { order: 2; padding: 20px 15px; }
-            .floating-help { bottom: 20px; right: 20px; width: 50px; height: 50px; font-size: 1.2em; }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🗓️ La Mia Agenda - Google Calendar</h1>
-            <p>Gestione completa con integrazione Google Calendar API</p>
-            
-            <div class="sync-status">
-                <div class="sync-indicator" id="syncIndicator"></div>
-                <span id="syncStatusText">Inizializzazione...</span>
-                <div style="display: flex; gap: 10px;">
-                    <button class="sync-btn test" onclick="testConnection()">🔧 Test</button>
-                    <button class="sync-btn config" onclick="openConfigModal()">⚙️ Config</button>
-                    <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="main-content">
-            <div class="calendar-section">
-                <div class="calendar-header">
-                    <div style="display: flex; gap: 10px;">
-                        <button class="nav-btn" onclick="previousMonth()">←</button>
-                        <button class="nav-btn" onclick="nextMonth()">→</button>
-                        <button class="nav-btn" onclick="goToToday()">Oggi</button>
-                    </div>
-                    <div class="current-month" id="currentMonth"></div>
-                </div>
-
-                <div class="calendar-grid" id="calendar"></div>
-
-                <div class="daily-schedule">
-                    <div class="schedule-header">
-                        <span>📅 Programma del <span id="selectedDate"></span></span>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="sync-day-btn" onclick="syncCurrentDay()">📤 Sync</button>
-                            <button class="sync-day-btn" onclick="importCurrentDay()">📥 Import</button>
-                        </div>
-                    </div>
-                    <div id="dailySchedule"></div>
-                </div>
-            </div>
-
-            <div class="sidebar">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" id="tasksToday">0</div>
-                        <div class="stat-label">Task Oggi</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="syncedEvents">0</div>
-                        <div class="stat-label">Eventi Sync</div>
-                    </div>
-                </div>
-
-                <div class="integration-section">
-                    <div class="integration-header">
-                        <div class="integration-title">📅 Google Calendar</div>
-                        <div class="connection-status disconnected" id="connectionStatus">Disconnesso</div>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                        <button class="integration-btn config" onclick="openConfigModal()">⚙️ Config</button>
-                        <button class="integration-btn test" onclick="testConnection()">🔌 Test</button>
-                        <button class="integration-btn auth" onclick="authenticateUser()" id="sideAuthBtn">🔐 Auth</button>
-                    </div>
-                    <div class="sync-log" id="syncLog">
-                        <div class="sync-log-entry info">Sistema pronto per la configurazione Google Calendar</div>
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 30px;">
-                    <h3>➕ Aggiungi Task</h3>
-                    <div class="form-group">
-                        <label for="taskTitle">Cosa devi fare?</label>
-                        <input type="text" id="taskTitle" class="form-control" placeholder="Es: Appuntamento, Meeting...">
-                    </div>
-                    <div class="form-group">
-                        <label for="taskDate">Data</label>
-                        <input type="date" id="taskDate" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="taskTime">Orario</label>
-                        <input type="time" id="taskTime" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="taskType">Categoria</label>
-                        <select id="taskType" class="form-control">
-                            <option value="work">💼 Lavoro</option>
-                            <option value="personal">👤 Personale</option>
-                            <option value="medical">💊 Cure Annamaria</option>
-                            <option value="garden">🌱 Orto/Giardino</option>
-                            <option value="house">🏠 Casa</option>
-                            <option value="babu">🐕 Babu</option>
-                        </select>
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" id="syncToCalendar" checked>
-                        <label for="syncToCalendar">Sincronizza con Google Calendar</label>
-                    </div>
-                    <button class="btn" onclick="addTask()">Aggiungi Task</button>
-                </div>
-
-                <div style="margin-bottom: 30px;">
-                    <h3>⏰ Routine Giornaliera</h3>
-                    <div class="routine-item">
-                        <div class="routine-time">7:00-8:45</div>
-                        <div class="routine-task">🐕 Uscita mattutina Babu</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">9:00</div>
-                        <div class="routine-task">☕ Colazione + 💊 Medicina Annamaria</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">12:15-13:00</div>
-                        <div class="routine-task">🏃 Parco Babu + Ginnastica</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">17:00</div>
-                        <div class="routine-task">💊 Medicina Annamaria</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">18:30-20:00</div>
-                        <div class="routine-task">🐕 Uscita serale Babu</div>
-                    </div>
-                    <div class="routine-item">
-                        <div class="routine-time">22:30</div>
-                        <div class="routine-task">💊 Medicina + 🎮 Tempo libero</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL CONFIGURAZIONE -->
-    <div class="modal-overlay" id="configModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeConfigModal()">×</button>
-            <div class="modal-title">⚙️ Configurazione Google Calendar API</div>
-            
-            <div class="modal-help">
-                <h4>🔧 Setup Google Cloud Console:</h4>
-                <ol>
-                    <li>Vai su <strong>Google Cloud Console</strong></li>
-                    <li>Crea un nuovo progetto o seleziona esistente</li>
-                    <li>Abilita <strong>Google Calendar API</strong></li>
-                    <li>Vai su <strong>Credenziali</strong> → <strong>+ CREA CREDENZIALI</strong></li>
-                    <li>Seleziona <strong>ID client OAuth 2.0</strong></li>
-                    <li>Tipo applicazione: <strong>Applicazione web</strong></li>
-                    <li>Origini JavaScript autorizzate: <span id="currentOrigin" style="background: #f8f9fa; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #e74c3c;"></span></li>
-                    <li>Copia <strong>Client ID</strong> e <strong>API Key</strong> qui sotto</li>
-                </ol>
-            </div>
-
-            <div class="modal-form-group">
-                <label for="googleClientId">Google OAuth Client ID:</label>
-                <input type="text" id="googleClientId" class="modal-form-control" 
-                       placeholder="123456789-xxxxxxxx.apps.googleusercontent.com">
-            </div>
-
-            <div class="modal-form-group">
-                <label for="googleApiKey">Google Calendar API Key:</label>
-                <input type="password" id="googleApiKey" class="modal-form-control" 
-                       placeholder="AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXX">
-            </div>
-
-            <div class="modal-form-group">
-                <label for="calendarId">Calendar ID:</label>
-                <input type="text" id="calendarId" class="modal-form-control" 
-                       placeholder="primary" value="primary">
-            </div>
-
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button class="modal-btn save" onclick="saveConfig()">💾 Salva</button>
-                <button class="
+</html>
