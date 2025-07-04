@@ -1858,35 +1858,21 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
                 initDemoTasks();
                 initCalendar();
                 
-                // Inizializza Google API moderne quando disponibili
-                addSyncLog('🔍 Controllo librerie Google moderne...', 'info');
+                // Inizializza SOLO se librerie non sono già caricate
+                addSyncLog('🔍 Controllo stato librerie moderne...', 'info');
                 
-                let attempts = 0;
-                const maxAttempts = 15;
+                const gapiOK = typeof gapi !== 'undefined';
+                const gisOK = typeof google !== 'undefined' && google.accounts;
                 
-                const checkInterval = setInterval(() => {
-                    attempts++;
-                    
-                    const gapiOK = typeof gapi !== 'undefined';
-                    const gisOK = typeof google !== 'undefined' && google.accounts;
-                    
-                    addSyncLog(`🔍 Tentativo ${attempts}/${maxAttempts} - GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, 'info');
-                    
-                    if (gapiOK && gisOK) {
-                        addSyncLog('✅ Librerie Google moderne caricate!', 'success');
-                        isGoogleAPILoaded = true;
-                        isGISLoaded = true;
-                        clearInterval(checkInterval);
-                        setTimeout(() => initGoogleAPI(), 500);
-                    } else if (attempts >= maxAttempts) {
-                        addSyncLog('❌ Timeout caricamento librerie Google', 'error');
-                        addSyncLog('🔧 Soluzioni:', 'warning');
-                        addSyncLog('• Controlla connessione internet', 'warning');
-                        addSyncLog('• Disabilita adblocker', 'warning');
-                        addSyncLog('• Prova in modalità incognito', 'warning');
-                        clearInterval(checkInterval);
-                    }
-                }, 1000);
+                if (gapiOK && gisOK) {
+                    addSyncLog('✅ Librerie già disponibili - Configurazione moderna', 'success');
+                    isGoogleAPILoaded = true;
+                    isGISLoaded = true;
+                    setTimeout(() => initModernGoogleAPI(), 500);
+                } else {
+                    addSyncLog('⏳ Attendo caricamento librerie...', 'info');
+                    addSyncLog(`GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, 'info');
+                }
 
                 // Aggiungi diagnostica per debug
                 setTimeout(() => {
@@ -1954,7 +1940,7 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
             }
         });
 
-        // Gestione caricamento Google API e GIS
+        // Gestione caricamento Google API e GIS - SOLO MODERNA
         window.gapiLoaded = function() {
             addSyncLog('✅ Google API (gapi) caricata', 'success');
             isGoogleAPILoaded = true;
@@ -1969,9 +1955,61 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
 
         function checkAndInitialize() {
             if (isGoogleAPILoaded && isGISLoaded) {
-                addSyncLog('🚀 Tutte le librerie caricate - Inizializzazione...', 'success');
-                setTimeout(() => initGoogleAPI(), 500);
+                addSyncLog('🚀 Tutte le librerie moderne caricate', 'success');
+                setTimeout(() => {
+                    // SOLO inizializzazione moderna
+                    initModernGoogleAPI();
+                }, 500);
             }
+        }
+
+        // NUOVA funzione di inizializzazione - SOLO GIS
+        function initModernGoogleAPI() {
+            addSyncLog('🆕 Inizializzazione Google API moderna (GIS only)...', 'info');
+            updateConnectionStatus('syncing', 'Inizializzazione moderna...');
+
+            // Inizializza SOLO il client API (NO auth2)
+            gapi.load('client', async () => {
+                try {
+                    await gapi.client.init({
+                        apiKey: GOOGLE_CONFIG.apiKey,
+                        discoveryDocs: GOOGLE_CONFIG.discoveryDocs
+                    });
+
+                    addSyncLog('✅ Client API moderno inizializzato', 'success');
+
+                    // Crea token client moderno
+                    tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: GOOGLE_CONFIG.clientId,
+                        scope: GOOGLE_CONFIG.scopes,
+                        callback: (response) => {
+                            if (response.error) {
+                                addSyncLog('❌ Errore OAuth: ' + response.error, 'error');
+                                updateConnectionStatus('disconnected', 'Errore autenticazione');
+                                return;
+                            }
+                            
+                            addSyncLog('✅ Token OAuth ricevuto', 'success');
+                            isUserAuthenticated = true;
+                            updateConnectionStatus('connected', 'Connesso via GIS');
+                            
+                            gapi.client.setToken({
+                                access_token: response.access_token
+                            });
+                            
+                            loadGoogleCalendarEvents();
+                        }
+                    });
+
+                    addSyncLog('✅ Sistema moderno configurato', 'success');
+                    isGoogleAPIInitialized = true;
+                    updateConnectionStatus('disconnected', 'Pronto per login moderno');
+
+                } catch (error) {
+                    addSyncLog('❌ Errore sistema moderno: ' + error.message, 'error');
+                    updateConnectionStatus('disconnected', 'Errore configurazione');
+                }
+            });
         }
 
         // Fallback per caricamento Google API
