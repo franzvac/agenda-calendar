@@ -611,7 +611,7 @@
             <h1>🗓️ La Mia Agenda Completa</h1>
             <p>Sincronizzazione automatica con Google Calendar</p>
             <div style="position: absolute; top: 10px; left: 20px; background: rgba(255,255,255,0.2); padding: 5px 10px; border-radius: 15px; font-size: 12px; color: rgba(255,255,255,0.8);">
-                v4.0.0 - Sistema Moderno GIS
+                v5.0.0 - Sistema Corretto
             </div>
             
             <div class="sync-status">
@@ -736,7 +736,6 @@
         </div>
     </div>
 
-    <!-- POPUP DETTAGLI EVENTI -->
     <div class="popup-overlay" id="popupOverlay">
         <div class="popup-content">
             <button class="popup-close" onclick="closePopup()">×</button>
@@ -749,13 +748,13 @@
     <button class="floating-help" onclick="showHelp()" title="Aiuto">❓</button>
 
     <script>
-        console.log('🚀 Caricamento WebApp Agenda con Google Calendar...');
+        console.log('🚀 Caricamento WebApp Agenda con Google Calendar - VERSIONE CORRETTA...');
 
-        // CONFIGURAZIONE GOOGLE CALENDAR (HARDCODED)
+        // CONFIGURAZIONE GOOGLE CALENDAR - AGGIORNA QUESTI VALORI
         const GOOGLE_CONFIG = {
             apiKey: 'AIzaSyBcNSqX0LryFhqzjFWHiq6hMV5S1a9LQfM',
             clientId: '305495314465-j13l2f6scmoqvdadgsnvpskm89g5r6n0.apps.googleusercontent.com',
-            calendarId: 'i4fptt554sm1abp0fevv62al4s@group.calendar.google.com',
+            calendarId: 'primary', // o il tuo calendar ID specifico
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
             scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
         };
@@ -769,7 +768,7 @@
         let isGISLoaded = false;
         let isGoogleAPIInitialized = false;
         let isUserAuthenticated = false;
-        let tokenClient;
+        let tokenClient = null;
 
         // ROUTINE FISSE
         const fixedRoutine = {
@@ -831,201 +830,151 @@
             }
         }
 
-        // FUNZIONI GOOGLE CALENDAR
-        function initGoogleAPI() {
-            addSyncLog('Inizializzazione Google Calendar API...', 'info');
-            
-            if (typeof gapi === 'undefined') {
-                addSyncLog('Google API non disponibile. Ricarica la pagina.', 'error');
-                updateConnectionStatus('disconnected', 'Google API non disponibile');
-                return;
-            }
-
-            updateConnectionStatus('syncing', 'Caricamento Google API...');
-
-            gapi.load('client:auth2', {
-                callback: function() {
-                    addSyncLog('Moduli Google API caricati', 'success');
-                    initGoogleClient();
-                },
-                onerror: function(error) {
-                    addSyncLog('Errore caricamento Google API', 'error');
-                    updateConnectionStatus('disconnected', 'Errore Google API');
-                }
-            });
-        }
-
-        function initGoogleClient() {
-            addSyncLog('Configurazione client Google Calendar...', 'info');
-            
-            const initConfig = {
-                apiKey: GOOGLE_CONFIG.apiKey,
-                clientId: GOOGLE_CONFIG.clientId,
-                discoveryDocs: GOOGLE_CONFIG.discoveryDocs,
-                scope: GOOGLE_CONFIG.scopes
-            };
-
-            // Debug della configurazione
-            console.log('Configurazione Google:', {
-                apiKey: GOOGLE_CONFIG.apiKey ? 'OK' : 'MANCANTE',
-                clientId: GOOGLE_CONFIG.clientId ? 'OK' : 'MANCANTE',
-                origin: window.location.origin
-            });
-
-            gapi.client.init(initConfig).then(
-                function() {
-                    addSyncLog('Google Calendar API pronta', 'success');
-                    isGoogleAPIInitialized = true;
-                    
-                    const authInstance = gapi.auth2.getAuthInstance();
-                    if (authInstance) {
-                        isUserAuthenticated = authInstance.isSignedIn.get();
-                        
-                        if (isUserAuthenticated) {
-                            addSyncLog('Utente già autenticato', 'success');
-                            updateConnectionStatus('connected', 'Google Calendar connesso');
-                            loadGoogleCalendarEvents();
-                        } else {
-                            addSyncLog('Clicca Login per autenticarti', 'info');
-                            updateConnectionStatus('disconnected', 'Autenticazione richiesta');
-                        }
-                        
-                        authInstance.isSignedIn.listen(updateSignInStatus);
-                    }
-                },
-                function(error) {
-                    addSyncLog('Errore configurazione Google API', 'error');
-                    console.error('Dettaglio errore Google API:', error);
-                    
-                    if (error.error) {
-                        switch (error.error) {
-                            case 'idpiframe_initialization_failed':
-                                addSyncLog('Errore domini autorizzati in Google Cloud Console', 'error');
-                                addSyncLog(`Aggiungi ${window.location.origin} alle origini autorizzate`, 'warning');
-                                break;
-                            case 'invalid_client':
-                                addSyncLog('Client ID non valido o non configurato', 'error');
-                                break;
-                            case 'access_denied':
-                                addSyncLog('Accesso negato - controlla le impostazioni OAuth', 'error');
-                                break;
-                            default:
-                                addSyncLog(`Errore: ${error.error}`, 'error');
-                        }
-                    }
-                    
-                    updateConnectionStatus('disconnected', 'Errore configurazione');
-                }
-            );
-        }
-
-        function updateSignInStatus(isSignedIn) {
-            isUserAuthenticated = isSignedIn;
-            if (isSignedIn) {
-                addSyncLog('Autenticazione completata', 'success');
-                updateConnectionStatus('connected', 'Google Calendar connesso');
-                loadGoogleCalendarEvents();
-            } else {
-                addSyncLog('Utente disconnesso', 'info');
-                updateConnectionStatus('disconnected', 'Autenticazione richiesta');
-            }
-        }
-
-        async function testGoogleAPI() {
-            addSyncLog('🔧 Test diagnostico Google API (GIS)...', 'info');
-            
-            // Test 1: Verifica caricamento gapi
-            if (typeof gapi === 'undefined') {
-                addSyncLog('❌ Google API non caricata', 'error');
-                return;
-            }
+        // GESTIONE CARICAMENTO GOOGLE API
+        window.gapiLoaded = function() {
             addSyncLog('✅ Google API (gapi) caricata', 'success');
-            
-            // Test 2: Verifica caricamento GIS
-            if (typeof google === 'undefined' || !google.accounts) {
-                addSyncLog('❌ Google Identity Services non caricata', 'error');
+            isGoogleAPILoaded = true;
+            checkAndInitialize();
+        };
+
+        window.gisLoaded = function() {
+            addSyncLog('✅ Google Identity Services caricata', 'success');
+            isGISLoaded = true;
+            checkAndInitialize();
+        };
+
+        function checkAndInitialize() {
+            if (isGoogleAPILoaded && isGISLoaded) {
+                addSyncLog('🚀 Tutte le librerie caricate - Inizializzazione...', 'success');
+                setTimeout(() => {
+                    initGoogleAPI();
+                }, 500);
+            }
+        }
+
+        // INIZIALIZZAZIONE GOOGLE API CORRETTA
+        function initGoogleAPI() {
+            addSyncLog('🔧 Inizializzazione Google API...', 'info');
+            updateConnectionStatus('syncing', 'Inizializzazione...');
+
+            // Verifica configurazione
+            if (!GOOGLE_CONFIG.apiKey || GOOGLE_CONFIG.apiKey === 'TUA_API_KEY_QUI') {
+                addSyncLog('❌ API Key non configurata', 'error');
+                addSyncLog('Modifica GOOGLE_CONFIG nel codice', 'warning');
+                updateConnectionStatus('disconnected', 'Configurazione mancante');
                 return;
             }
-            addSyncLog('✅ Google Identity Services caricata', 'success');
-            
-            // Test 3: Debug configurazione
-            addSyncLog('🔍 Debug configurazione:', 'info');
-            addSyncLog(`• Client ID: ${GOOGLE_CONFIG.clientId.substring(0, 20)}...`, 'info');
-            addSyncLog(`• API Key: ${GOOGLE_CONFIG.apiKey.substring(0, 20)}...`, 'info');
-            addSyncLog(`• Dominio: ${window.location.origin}`, 'info');
-            addSyncLog(`• Protocollo: ${window.location.protocol}`, 'info');
-            
-            // Test 4: Verifica inizializzazione client
-            try {
-                addSyncLog('🔄 Test inizializzazione client...', 'info');
-                
-                await gapi.client.init({
-                    apiKey: GOOGLE_CONFIG.apiKey,
-                    discoveryDocs: GOOGLE_CONFIG.discoveryDocs
-                });
-                
-                addSyncLog('✅ Client API inizializzato', 'success');
-                
-                // Test token client
+
+            if (!GOOGLE_CONFIG.clientId || GOOGLE_CONFIG.clientId === 'TUO_CLIENT_ID_QUI.apps.googleusercontent.com') {
+                addSyncLog('❌ Client ID non configurato', 'error');
+                addSyncLog('Modifica GOOGLE_CONFIG nel codice', 'warning');
+                updateConnectionStatus('disconnected', 'Configurazione mancante');
+                return;
+            }
+
+            // Inizializza il client API
+            gapi.load('client', async () => {
                 try {
-                    const testTokenClient = google.accounts.oauth2.initTokenClient({
+                    await gapi.client.init({
+                        apiKey: GOOGLE_CONFIG.apiKey,
+                        discoveryDocs: GOOGLE_CONFIG.discoveryDocs
+                    });
+
+                    addSyncLog('✅ Client API inizializzato', 'success');
+
+                    // Inizializza il token client per OAuth2
+                    tokenClient = google.accounts.oauth2.initTokenClient({
                         client_id: GOOGLE_CONFIG.clientId,
                         scope: GOOGLE_CONFIG.scopes,
-                        callback: () => {} // callback vuoto per test
+                        callback: (response) => {
+                            handleAuthResponse(response);
+                        }
                     });
-                    
-                    addSyncLog('✅ Token client creato con successo', 'success');
-                    addSyncLog('🎯 Configurazione corretta! Sistema pronto.', 'success');
+
+                    addSyncLog('✅ Token client configurato', 'success');
+                    isGoogleAPIInitialized = true;
                     updateConnectionStatus('disconnected', 'Pronto per login');
+
+                } catch (error) {
+                    addSyncLog('❌ Errore inizializzazione: ' + error.message, 'error');
+                    console.error('Dettaglio errore:', error);
+                    updateConnectionStatus('disconnected', 'Errore configurazione');
                     
-                } catch (tokenError) {
-                    addSyncLog('❌ Errore token client:', 'error');
-                    addSyncLog(tokenError.message, 'error');
-                    
-                    if (tokenError.message.includes('Invalid origin')) {
-                        addSyncLog('🔧 SOLUZIONE - Vai in Google Cloud Console:', 'warning');
-                        addSyncLog('1. Credenziali → OAuth 2.0 Client ID', 'warning');
-                        addSyncLog('2. Modifica il tuo client', 'warning');
-                        addSyncLog(`3. Aggiungi: ${window.location.origin}`, 'warning');
-                        addSyncLog('4. Salva e aspetta 5-10 minuti', 'warning');
+                    // Suggerimenti per errori comuni
+                    if (error.message.includes('API key')) {
+                        addSyncLog('🔧 Verifica API key in Google Cloud Console', 'warning');
+                    } else if (error.message.includes('origin')) {
+                        addSyncLog('🔧 Verifica domini autorizzati', 'warning');
                     }
                 }
-                
-            } catch (clientError) {
-                addSyncLog('❌ Errore inizializzazione client:', 'error');
-                addSyncLog(clientError.message, 'error');
-                
-                if (clientError.message.includes('API key')) {
-                    addSyncLog('🔧 Problema API Key - verifica in Google Cloud Console', 'warning');
-                } else if (clientError.message.includes('quota')) {
-                    addSyncLog('🔧 Quota API superata - controlla limiti', 'warning');
-                }
-            }
+            });
         }
 
+        // GESTIONE RISPOSTA AUTENTICAZIONE
+        function handleAuthResponse(response) {
+            if (response.error) {
+                addSyncLog('❌ Errore autenticazione: ' + response.error, 'error');
+                updateConnectionStatus('disconnected', 'Errore autenticazione');
+                return;
+            }
+
+            addSyncLog('✅ Autenticazione riuscita', 'success');
+            
+            // Imposta il token per le richieste API
+            gapi.client.setToken({
+                access_token: response.access_token
+            });
+
+            isUserAuthenticated = true;
+            updateConnectionStatus('connected', 'Connesso a Google Calendar');
+            
+            // Carica eventi dal calendario
+            loadGoogleCalendarEvents();
+        }
+
+        // FUNZIONI GOOGLE CALENDAR
         async function authenticateUser() {
             if (!isGoogleAPIInitialized) {
-                addSyncLog('Google API non inizializzata', 'warning');
-                initGoogleAPI();
+                addSyncLog('❌ Google API non inizializzata', 'warning');
+                return;
+            }
+
+            if (!tokenClient) {
+                addSyncLog('❌ Token client non disponibile', 'error');
                 return;
             }
 
             try {
-                addSyncLog('Avvio autenticazione...', 'info');
-                const authInstance = gapi.auth2.getAuthInstance();
-                await authInstance.signIn();
-                addSyncLog('Autenticazione riuscita', 'success');
+                addSyncLog('🔐 Avvio autenticazione...', 'info');
+                
+                // Controlla se c'è già un token valido
+                const token = gapi.client.getToken();
+                if (token && token.access_token) {
+                    addSyncLog('✅ Token esistente trovato', 'success');
+                    isUserAuthenticated = true;
+                    updateConnectionStatus('connected', 'Riconnesso');
+                    loadGoogleCalendarEvents();
+                    return;
+                }
+
+                // Richiedi nuovo token
+                tokenClient.requestAccessToken();
+                
             } catch (error) {
-                addSyncLog('Errore autenticazione: ' + error.error, 'error');
+                addSyncLog('❌ Errore durante autenticazione: ' + error.message, 'error');
+                console.error('Errore auth:', error);
                 updateConnectionStatus('disconnected', 'Errore autenticazione');
             }
         }
 
         async function loadGoogleCalendarEvents() {
-            if (!isUserAuthenticated) return;
+            if (!isUserAuthenticated) {
+                addSyncLog('❌ Utente non autenticato', 'warning');
+                return;
+            }
 
-            addSyncLog('Caricamento eventi da Google Calendar...', 'info');
-            updateConnectionStatus('syncing', 'Sincronizzazione in corso...');
+            addSyncLog('📅 Caricamento eventi da Google Calendar...', 'info');
+            updateConnectionStatus('syncing', 'Sincronizzazione...');
 
             try {
                 const now = new Date();
@@ -1042,9 +991,10 @@
                 });
 
                 const events = response.result.items || [];
-                addSyncLog(`${events.length} eventi caricati da Google Calendar`, 'success');
+                addSyncLog(`📊 ${events.length} eventi caricati`, 'success');
 
-                // Integra eventi Google Calendar nei task locali
+                // Integra eventi nel calendario locale
+                let importedCount = 0;
                 events.forEach(event => {
                     const startDate = event.start.dateTime || event.start.date;
                     const eventDate = new Date(startDate);
@@ -1071,10 +1021,11 @@
                             synced: true,
                             source: 'google_calendar'
                         });
+                        importedCount++;
                     }
                 });
 
-                // Ordina gli eventi per orario
+                // Ordina eventi per orario
                 Object.keys(tasks).forEach(dateKey => {
                     tasks[dateKey].sort((a, b) => {
                         if (!a.time && !b.time) return 0;
@@ -1084,18 +1035,29 @@
                     });
                 });
 
+                addSyncLog(`📥 ${importedCount} nuovi eventi importati`, 'success');
                 updateConnectionStatus('connected', 'Sincronizzazione completata');
                 updateDisplay();
                 updateStats();
 
             } catch (error) {
-                addSyncLog('Errore caricamento eventi: ' + error.message, 'error');
-                updateConnectionStatus('connected', 'Errore caricamento eventi');
+                addSyncLog('❌ Errore caricamento eventi: ' + error.message, 'error');
+                console.error('Errore load events:', error);
+                updateConnectionStatus('connected', 'Errore caricamento');
+                
+                // Gestione errori specifici
+                if (error.status === 403) {
+                    addSyncLog('🔧 Permessi insufficienti - verifica scopes', 'warning');
+                } else if (error.status === 404) {
+                    addSyncLog('🔧 Calendario non trovato - verifica calendarId', 'warning');
+                }
             }
         }
 
         async function syncTaskToGoogle(task, dateKey) {
-            if (!isUserAuthenticated || !task.syncToCalendar) return false;
+            if (!isUserAuthenticated || !task.syncToCalendar) {
+                return false;
+            }
 
             try {
                 const taskDate = new Date(dateKey + 'T00:00:00');
@@ -1132,19 +1094,21 @@
                 if (response.result) {
                     task.synced = true;
                     task.googleEventId = response.result.id;
-                    addSyncLog(`Task "${task.title}" sincronizzato con Google Calendar`, 'success');
+                    addSyncLog(`📤 "${task.title}" sincronizzato`, 'success');
                     return true;
                 }
 
             } catch (error) {
-                addSyncLog(`Errore sincronizzazione "${task.title}": ${error.message}`, 'error');
+                addSyncLog(`❌ Errore sync "${task.title}": ${error.message}`, 'error');
+                console.error('Errore sync task:', error);
                 return false;
             }
         }
 
+        // FUNZIONI SINCRONIZZAZIONE
         async function syncCurrentDay() {
             if (!isUserAuthenticated) {
-                addSyncLog('Devi autenticarti prima di sincronizzare', 'warning');
+                addSyncLog('🔐 Effettua il login prima di sincronizzare', 'warning');
                 return;
             }
 
@@ -1153,12 +1117,12 @@
             const unsyncedTasks = dayTasks.filter(task => !task.synced && task.source !== 'google_calendar');
 
             if (unsyncedTasks.length === 0) {
-                addSyncLog('Nessun task da sincronizzare per questo giorno', 'info');
+                addSyncLog('ℹ️ Nessun task da sincronizzare', 'info');
                 return;
             }
 
-            addSyncLog(`Sincronizzazione di ${unsyncedTasks.length} task...`, 'info');
-            updateConnectionStatus('syncing', 'Sincronizzazione in corso...');
+            addSyncLog(`🔄 Sincronizzazione ${unsyncedTasks.length} task...`, 'info');
+            updateConnectionStatus('syncing', 'Sincronizzazione...');
 
             let syncedCount = 0;
             for (const task of unsyncedTasks) {
@@ -1167,7 +1131,7 @@
                 }
             }
 
-            addSyncLog(`${syncedCount}/${unsyncedTasks.length} task sincronizzati`, 'success');
+            addSyncLog(`✅ ${syncedCount}/${unsyncedTasks.length} task sincronizzati`, 'success');
             updateConnectionStatus('connected', 'Sincronizzazione completata');
             updateDisplay();
             updateStats();
@@ -1175,14 +1139,15 @@
 
         async function importCurrentDay() {
             if (!isUserAuthenticated) {
-                addSyncLog('Devi autenticarti prima di importare', 'warning');
+                addSyncLog('🔐 Effettua il login prima di importare', 'warning');
                 return;
             }
 
-            addSyncLog('Importazione eventi del giorno...', 'info');
+            addSyncLog('📥 Importazione eventi del giorno...', 'info');
             await loadGoogleCalendarEvents();
         }
 
+        // FUNZIONI UI
         function updateConnectionStatus(status, message = '') {
             const statusElement = document.getElementById('connectionStatus');
             const syncIndicator = document.getElementById('syncIndicator');
@@ -1220,7 +1185,139 @@
             }
         }
 
-        // CARICAMENTO DATI RACCOLTA DIFFERENZIATA
+        // FUNZIONI DIAGNOSTIC E HELPER
+        function testGoogleAPI() {
+            addSyncLog('🔧 Test diagnostico completo...', 'info');
+            
+            // Test 1: Librerie caricate
+            const gapiOK = typeof gapi !== 'undefined';
+            const gisOK = typeof google !== 'undefined' && google.accounts;
+            
+            addSyncLog(`📚 GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, gapiOK && gisOK ? 'success' : 'error');
+            
+            // Test 2: Configurazione
+            const configOK = GOOGLE_CONFIG.apiKey !== 'TUA_API_KEY_QUI' && GOOGLE_CONFIG.clientId !== 'TUO_CLIENT_ID_QUI.apps.googleusercontent.com';
+            addSyncLog(`⚙️ Configurazione: ${configOK ? '✅' : '❌'}`, configOK ? 'success' : 'error');
+            
+            if (!configOK) {
+                addSyncLog('🔧 CONFIGURA PRIMA:', 'warning');
+                addSyncLog('1. Sostituisci TUA_API_KEY_QUI', 'warning');
+                addSyncLog('2. Sostituisci TUO_CLIENT_ID_QUI', 'warning');
+                return;
+            }
+            
+            // Test 3: Dominio
+            addSyncLog(`🌐 Dominio: ${window.location.origin}`, 'info');
+            addSyncLog('Verifica che sia autorizzato in Google Cloud Console', 'info');
+            
+            // Test 4: API Inizializzata
+            addSyncLog(`🔧 API Init: ${isGoogleAPIInitialized ? '✅' : '❌'}`, isGoogleAPIInitialized ? 'success' : 'error');
+            addSyncLog(`🔐 Autenticato: ${isUserAuthenticated ? '✅' : '❌'}`, isUserAuthenticated ? 'success' : 'info');
+            
+            if (gapiOK && gisOK && configOK && !isGoogleAPIInitialized) {
+                addSyncLog('🔄 Reinizializzo...', 'info');
+                initGoogleAPI();
+            }
+        }
+
+        function showDomainHelp() {
+            const helpText = `🔗 GUIDA CONFIGURAZIONE GOOGLE CALENDAR
+
+📋 PREREQUISITI:
+1️⃣ Progetto Google Cloud Console
+2️⃣ Calendar API abilitata
+3️⃣ Credenziali OAuth 2.0 configurate
+
+🔧 CONFIGURAZIONE CODICE:
+Modifica GOOGLE_CONFIG nel file HTML:
+
+• apiKey: "TUA_API_KEY_DA_GOOGLE_CLOUD"
+• clientId: "TUO_CLIENT_ID.apps.googleusercontent.com"
+• calendarId: "primary" (o ID specifico)
+
+🌐 DOMINI AUTORIZZATI:
+In Google Cloud Console → Credenziali → OAuth 2.0
+Aggiungi in "Origini JavaScript autorizzate":
+• ${window.location.origin}
+
+⏰ Attendi 5-10 minuti dopo le modifiche!
+
+🔍 VERIFICA:
+1. Clicca "Test" per diagnostica
+2. Clicca "Login" per autenticarti
+3. Controlla la console del browser per errori
+
+🆘 ERRORI COMUNI:
+• "API key invalid": Verifica la chiave
+• "Invalid origin": Aggiungi dominio autorizzato
+• "Access denied": Verifica permessi Calendar API`;
+
+            alert(helpText);
+            addSyncLog('📋 Guida configurazione mostrata', 'info');
+        }
+
+        function resetGoogleAPI() {
+            addSyncLog('🔄 Reset completo sistema...', 'warning');
+            
+            // Reset variabili
+            isGoogleAPILoaded = false;
+            isGISLoaded = false;
+            isGoogleAPIInitialized = false;
+            isUserAuthenticated = false;
+            tokenClient = null;
+            
+            // Reset token
+            if (typeof gapi !== 'undefined' && gapi.client) {
+                gapi.client.setToken(null);
+            }
+            
+            updateConnectionStatus('disconnected', 'Reset completato');
+            
+            // Reinizializza
+            setTimeout(() => {
+                if (typeof gapi !== 'undefined' && typeof google !== 'undefined') {
+                    addSyncLog('🔄 Reinizializzazione...', 'info');
+                    initGoogleAPI();
+                } else {
+                    addSyncLog('🔄 Ricarica la pagina per reinizializzare', 'warning');
+                }
+            }, 1000);
+        }
+
+        function showHelp() {
+            const helpText = `🎯 AGENDA GOOGLE CALENDAR
+
+📚 FUNZIONI:
+• Calendario personale completo
+• Sincronizzazione bidirezionale Google Calendar
+• Gestione task con categorie
+• Routine automatiche (medicina, uscite Babu)
+• Raccolta differenziata 2025
+
+🔧 CONFIGURAZIONE:
+1. Modifica GOOGLE_CONFIG nel codice
+2. Inserisci la tua API Key e Client ID
+3. Configura domini in Google Cloud Console
+4. Clicca "Login" per autenticarti
+
+🔄 SINCRONIZZAZIONE:
+• "Sync": Carica task locali su Google
+• "Import": Scarica eventi da Google Calendar
+• Checkbox per auto-sync nuovi task
+
+📊 DATI INCLUSI:
+• 365 giorni raccolta differenziata 2025
+• Routine giornaliere complete
+• Eventi settimanali (Reina, call clienti)
+• Integrazione Google Calendar
+
+🆘 SUPPORTO:
+Clicca "Test" per diagnostica automatica`;
+
+            alert(helpText);
+        }
+
+        // CARICAMENTO DATI
         function initDemoTasks() {
             console.log('🔄 Caricamento calendario raccolta differenziata 2025...');
             
@@ -1228,94 +1325,91 @@
             
             // RACCOLTA DIFFERENZIATA 2025 - CALENDARIO COMPLETO
             const wasteData = [
-                '2025-01-02,VETRO','2025-01-03,CARTA','2025-01-05,PLASTICA E METALLI / PANNOLINI',
-                '2025-01-07,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-01-09,VETRO','2025-01-10,ORGANICO / PANNOLINI',
-                '2025-01-12,PLASTICA E METALLI / PANNOLINI','2025-01-14,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-01-16,CARTA','2025-01-17,ORGANICO / PANNOLINI','2025-01-19,PLASTICA E METALLI / PANNOLINI',
-                '2025-01-21,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-01-23,VETRO','2025-01-24,ORGANICO / PANNOLINI',
-                '2025-01-26,PLASTICA E METALLI / PANNOLINI','2025-01-28,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-01-30,CARTA','2025-01-31,ORGANICO / PANNOLINI',
-                '2025-02-02,PLASTICA E METALLI / PANNOLINI','2025-02-04,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-02-06,VETRO','2025-02-07,ORGANICO / PANNOLINI','2025-02-09,PLASTICA E METALLI / PANNOLINI',
-                '2025-02-11,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-02-13,CARTA','2025-02-14,ORGANICO / PANNOLINI',
-                '2025-02-16,PLASTICA E METALLI / PANNOLINI','2025-02-18,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-02-20,VETRO','2025-02-21,ORGANICO / PANNOLINI','2025-02-23,PLASTICA E METALLI / PANNOLINI',
-                '2025-02-25,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-02-27,CARTA','2025-02-28,ORGANICO / PANNOLINI',
-                '2025-03-02,PLASTICA E METALLI / PANNOLINI','2025-03-04,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-03-06,VETRO','2025-03-07,ORGANICO / PANNOLINI','2025-03-09,PLASTICA E METALLI / PANNOLINI',
-                '2025-03-11,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-03-13,CARTA','2025-03-14,ORGANICO / PANNOLINI',
-                '2025-03-16,PLASTICA E METALLI / PANNOLINI','2025-03-18,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-03-20,VETRO','2025-03-21,ORGANICO / PANNOLINI','2025-03-23,PLASTICA E METALLI / PANNOLINI',
-                '2025-03-25,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-03-27,CARTA','2025-03-28,ORGANICO / PANNOLINI',
-                '2025-03-30,PLASTICA E METALLI / PANNOLINI','2025-04-01,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-04-03,VETRO','2025-04-04,ORGANICO / PANNOLINI','2025-04-06,PLASTICA E METALLI / PANNOLINI',
-                '2025-04-08,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-04-10,CARTA','2025-04-11,ORGANICO / PANNOLINI',
-                '2025-04-13,PLASTICA E METALLI / PANNOLINI','2025-04-15,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-04-17,VETRO','2025-04-18,ORGANICO / PANNOLINI','2025-04-20,PLASTICA E METALLI / PANNOLINI',
-                '2025-04-22,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-04-24,CARTA','2025-04-25,ORGANICO / PANNOLINI',
-                '2025-04-27,PLASTICA E METALLI / PANNOLINI','2025-04-29,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-05-01,VETRO','2025-05-02,ORGANICO / PANNOLINI','2025-05-04,PLASTICA E METALLI / PANNOLINI',
-                '2025-05-06,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-05-08,CARTA','2025-05-09,ORGANICO / PANNOLINI',
-                '2025-05-11,PLASTICA E METALLI / PANNOLINI','2025-05-12,ORGANICO','2025-05-13,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-05-14,ORGANICO','2025-05-15,VETRO','2025-05-16,ORGANICO / PANNOLINI',
-                '2025-05-18,PLASTICA E METALLI / PANNOLINI','2025-05-19,ORGANICO','2025-05-20,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-05-21,ORGANICO','2025-05-22,CARTA','2025-05-23,ORGANICO / PANNOLINI',
-                '2025-05-25,PLASTICA E METALLI / PANNOLINI','2025-05-26,ORGANICO','2025-05-27,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-05-28,ORGANICO','2025-05-29,VETRO','2025-05-30,ORGANICO / PANNOLINI',
-                '2025-06-01,PLASTICA E METALLI / PANNOLINI','2025-06-02,ORGANICO','2025-06-03,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-06-04,ORGANICO','2025-06-05,CARTA','2025-06-06,ORGANICO / PANNOLINI',
-                '2025-06-08,PLASTICA E METALLI / PANNOLINI','2025-06-09,ORGANICO','2025-06-10,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-06-11,ORGANICO','2025-06-12,VETRO','2025-06-13,ORGANICO / PANNOLINI',
-                '2025-06-15,PLASTICA E METALLI / PANNOLINI','2025-06-16,ORGANICO','2025-06-17,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-06-18,ORGANICO','2025-06-19,CARTA','2025-06-20,ORGANICO / PANNOLINI',
-                '2025-06-22,PLASTICA E METALLI / PANNOLINI','2025-06-23,ORGANICO','2025-06-24,RESIDUO NON RICICLABILE / PANNOLINI',
-                '2025-06-25,ORGANICO','2025-06-26,VETRO','2025-06-27,ORGANICO / PANNOLINI',
-                '2025-06-29,PLASTICA E METALLI / PANNOLINI','2025-06-30,ORGANICO',
-                '2025-07-01,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-02,ORGANICO','2025-07-03,CARTA',
-                '2025-07-04,ORGANICO / PANNOLINI','2025-07-06,PLASTICA E METALLI / PANNOLINI','2025-07-07,ORGANICO',
-                '2025-07-08,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-09,ORGANICO','2025-07-10,VETRO',
-                '2025-07-11,ORGANICO / PANNOLINI','2025-07-13,PLASTICA E METALLI / PANNOLINI','2025-07-14,ORGANICO',
-                '2025-07-15,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-16,ORGANICO','2025-07-17,CARTA',
-                '2025-07-18,ORGANICO / PANNOLINI','2025-07-20,PLASTICA E METALLI / PANNOLINI','2025-07-21,ORGANICO',
-                '2025-07-22,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-23,ORGANICO','2025-07-24,VETRO',
-                '2025-07-25,ORGANICO / PANNOLINI','2025-07-27,PLASTICA E METALLI / PANNOLINI','2025-07-28,ORGANICO',
-                '2025-07-29,RESIDUO NON RICICLABILE / PANNOLINI','2025-07-30,ORGANICO','2025-07-31,CARTA',
-                '2025-08-01,ORGANICO / PANNOLINI','2025-08-03,PLASTICA E METALLI / PANNOLINI','2025-08-04,ORGANICO',
-                '2025-08-05,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-06,ORGANICO','2025-08-07,VETRO',
-                '2025-08-08,ORGANICO / PANNOLINI','2025-08-10,PLASTICA E METALLI / PANNOLINI','2025-08-11,ORGANICO',
-                '2025-08-12,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-13,ORGANICO','2025-08-14,CARTA',
-                '2025-08-15,ORGANICO / PANNOLINI','2025-08-17,PLASTICA E METALLI / PANNOLINI','2025-08-18,ORGANICO',
-                '2025-08-19,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-20,ORGANICO','2025-08-21,VETRO',
-                '2025-08-22,ORGANICO / PANNOLINI','2025-08-24,PLASTICA E METALLI / PANNOLINI','2025-08-25,ORGANICO',
-                '2025-08-26,RESIDUO NON RICICLABILE / PANNOLINI','2025-08-27,ORGANICO','2025-08-28,CARTA',
-                '2025-08-29,ORGANICO / PANNOLINI','2025-08-31,PLASTICA E METALLI / PANNOLINI',
-                '2025-09-01,ORGANICO','2025-09-02,RESIDUO NON RICICLABILE / PANNOLINI','2025-09-03,ORGANICO',
-                '2025-09-04,VETRO','2025-09-05,ORGANICO / PANNOLINI','2025-09-07,PLASTICA E METALLI / PANNOLINI',
-                '2025-09-08,ORGANICO','2025-09-09,RESIDUO NON RICICLABILE / PANNOLINI','2025-09-10,ORGANICO',
-                '2025-09-11,CARTA','2025-09-12,ORGANICO / PANNOLINI','2025-09-14,PLASTICA E METALLI / PANNOLINI',
-                '2025-09-16,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-09-18,VETRO','2025-09-19,ORGANICO / PANNOLINI',
-                '2025-09-21,PLASTICA E METALLI / PANNOLINI','2025-09-23,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-09-25,CARTA','2025-09-26,ORGANICO / PANNOLINI','2025-09-28,PLASTICA E METALLI / PANNOLINI',
-                '2025-09-30,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-10-02,VETRO','2025-10-03,ORGANICO / PANNOLINI',
-                '2025-10-05,PLASTICA E METALLI / PANNOLINI','2025-10-07,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-10-09,CARTA','2025-10-10,ORGANICO / PANNOLINI','2025-10-12,PLASTICA E METALLI / PANNOLINI',
-                '2025-10-14,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-10-16,VETRO','2025-10-17,ORGANICO / PANNOLINI',
-                '2025-10-19,PLASTICA E METALLI / PANNOLINI','2025-10-21,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-10-23,CARTA','2025-10-24,ORGANICO / PANNOLINI','2025-10-26,PLASTICA E METALLI / PANNOLINI',
-                '2025-10-28,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-10-30,VETRO','2025-10-31,ORGANICO / PANNOLINI',
-                '2025-11-02,PLASTICA E METALLI / PANNOLINI','2025-11-04,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-11-06,CARTA','2025-11-07,ORGANICO / PANNOLINI','2025-11-09,PLASTICA E METALLI / PANNOLINI',
-                '2025-11-11,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-11-13,VETRO','2025-11-14,ORGANICO / PANNOLINI',
-                '2025-11-16,PLASTICA E METALLI / PANNOLINI','2025-11-18,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-11-20,CARTA','2025-11-21,ORGANICO / PANNOLINI','2025-11-23,PLASTICA E METALLI / PANNOLINI',
-                '2025-11-25,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-11-27,VETRO','2025-11-28,ORGANICO / PANNOLINI',
-                '2025-11-30,PLASTICA E METALLI / PANNOLINI','2025-12-02,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-12-04,CARTA','2025-12-05,ORGANICO / PANNOLINI','2025-12-07,PLASTICA E METALLI / PANNOLINI',
-                '2025-12-09,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-12-11,VETRO','2025-12-12,ORGANICO / PANNOLINI',
-                '2025-12-14,PLASTICA E METALLI / PANNOLINI','2025-12-16,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO',
-                '2025-12-18,CARTA','2025-12-19,ORGANICO / PANNOLINI','2025-12-21,PLASTICA E METALLI / PANNOLINI',
-                '2025-12-23,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO','2025-12-25,VETRO','2025-12-26,ORGANICO / PANNOLINI',
-                '2025-12-28,PLASTICA E METALLI / PANNOLINI','2025-12-30,RESIDUO NON RICICLABILE / PANNOLINI / ORGANICO'
+                '2025-01-02,VETRO','2025-01-03,CARTA','2025-01-05,PLASTICA E METALLI',
+                '2025-01-07,RESIDUO NON RICICLABILE','2025-01-09,VETRO','2025-01-10,ORGANICO',
+                '2025-01-12,PLASTICA E METALLI','2025-01-14,RESIDUO NON RICICLABILE',
+                '2025-01-16,CARTA','2025-01-17,ORGANICO','2025-01-19,PLASTICA E METALLI',
+                '2025-01-21,RESIDUO NON RICICLABILE','2025-01-23,VETRO','2025-01-24,ORGANICO',
+                '2025-01-26,PLASTICA E METALLI','2025-01-28,RESIDUO NON RICICLABILE',
+                '2025-01-30,CARTA','2025-01-31,ORGANICO',
+                '2025-02-02,PLASTICA E METALLI','2025-02-04,RESIDUO NON RICICLABILE',
+                '2025-02-06,VETRO','2025-02-07,ORGANICO','2025-02-09,PLASTICA E METALLI',
+                '2025-02-11,RESIDUO NON RICICLABILE','2025-02-13,CARTA','2025-02-14,ORGANICO',
+                '2025-02-16,PLASTICA E METALLI','2025-02-18,RESIDUO NON RICICLABILE',
+                '2025-02-20,VETRO','2025-02-21,ORGANICO','2025-02-23,PLASTICA E METALLI',
+                '2025-02-25,RESIDUO NON RICICLABILE','2025-02-27,CARTA','2025-02-28,ORGANICO',
+                '2025-03-02,PLASTICA E METALLI','2025-03-04,RESIDUO NON RICICLABILE',
+                '2025-03-06,VETRO','2025-03-07,ORGANICO','2025-03-09,PLASTICA E METALLI',
+                '2025-03-11,RESIDUO NON RICICLABILE','2025-03-13,CARTA','2025-03-14,ORGANICO',
+                '2025-03-16,PLASTICA E METALLI','2025-03-18,RESIDUO NON RICICLABILE',
+                '2025-03-20,VETRO','2025-03-21,ORGANICO','2025-03-23,PLASTICA E METALLI',
+                '2025-03-25,RESIDUO NON RICICLABILE','2025-03-27,CARTA','2025-03-28,ORGANICO',
+                '2025-03-30,PLASTICA E METALLI','2025-04-01,RESIDUO NON RICICLABILE',
+                '2025-04-03,VETRO','2025-04-04,ORGANICO','2025-04-06,PLASTICA E METALLI',
+                '2025-04-08,RESIDUO NON RICICLABILE','2025-04-10,CARTA','2025-04-11,ORGANICO',
+                '2025-04-13,PLASTICA E METALLI','2025-04-15,RESIDUO NON RICICLABILE',
+                '2025-04-17,VETRO','2025-04-18,ORGANICO','2025-04-20,PLASTICA E METALLI',
+                '2025-04-22,RESIDUO NON RICICLABILE','2025-04-24,CARTA','2025-04-25,ORGANICO',
+                '2025-04-27,PLASTICA E METALLI','2025-04-29,RESIDUO NON RICICLABILE',
+                '2025-05-01,VETRO','2025-05-02,ORGANICO','2025-05-04,PLASTICA E METALLI',
+                '2025-05-06,RESIDUO NON RICICLABILE','2025-05-08,CARTA','2025-05-09,ORGANICO',
+                '2025-05-11,PLASTICA E METALLI','2025-05-13,RESIDUO NON RICICLABILE',
+                '2025-05-15,VETRO','2025-05-16,ORGANICO','2025-05-18,PLASTICA E METALLI',
+                '2025-05-20,RESIDUO NON RICICLABILE','2025-05-22,CARTA','2025-05-23,ORGANICO',
+                '2025-05-25,PLASTICA E METALLI','2025-05-27,RESIDUO NON RICICLABILE',
+                '2025-05-29,VETRO','2025-05-30,ORGANICO',
+                '2025-06-01,PLASTICA E METALLI','2025-06-03,RESIDUO NON RICICLABILE',
+                '2025-06-05,CARTA','2025-06-06,ORGANICO','2025-06-08,PLASTICA E METALLI',
+                '2025-06-10,RESIDUO NON RICICLABILE','2025-06-12,VETRO','2025-06-13,ORGANICO',
+                '2025-06-15,PLASTICA E METALLI','2025-06-17,RESIDUO NON RICICLABILE',
+                '2025-06-19,CARTA','2025-06-20,ORGANICO','2025-06-22,PLASTICA E METALLI',
+                '2025-06-24,RESIDUO NON RICICLABILE','2025-06-26,VETRO','2025-06-27,ORGANICO',
+                '2025-06-29,PLASTICA E METALLI','2025-06-30,ORGANICO',
+                '2025-07-01,RESIDUO NON RICICLABILE','2025-07-02,ORGANICO','2025-07-03,CARTA',
+                '2025-07-04,ORGANICO','2025-07-06,PLASTICA E METALLI','2025-07-07,ORGANICO',
+                '2025-07-08,RESIDUO NON RICICLABILE','2025-07-09,ORGANICO','2025-07-10,VETRO',
+                '2025-07-11,ORGANICO','2025-07-13,PLASTICA E METALLI','2025-07-14,ORGANICO',
+                '2025-07-15,RESIDUO NON RICICLABILE','2025-07-16,ORGANICO','2025-07-17,CARTA',
+                '2025-07-18,ORGANICO','2025-07-20,PLASTICA E METALLI','2025-07-21,ORGANICO',
+                '2025-07-22,RESIDUO NON RICICLABILE','2025-07-23,ORGANICO','2025-07-24,VETRO',
+                '2025-07-25,ORGANICO','2025-07-27,PLASTICA E METALLI','2025-07-28,ORGANICO',
+                '2025-07-29,RESIDUO NON RICICLABILE','2025-07-30,ORGANICO','2025-07-31,CARTA',
+                '2025-08-01,ORGANICO','2025-08-03,PLASTICA E METALLI','2025-08-04,ORGANICO',
+                '2025-08-05,RESIDUO NON RICICLABILE','2025-08-06,ORGANICO','2025-08-07,VETRO',
+                '2025-08-08,ORGANICO','2025-08-10,PLASTICA E METALLI','2025-08-11,ORGANICO',
+                '2025-08-12,RESIDUO NON RICICLABILE','2025-08-13,ORGANICO','2025-08-14,CARTA',
+                '2025-08-15,ORGANICO','2025-08-17,PLASTICA E METALLI','2025-08-18,ORGANICO',
+                '2025-08-19,RESIDUO NON RICICLABILE','2025-08-20,ORGANICO','2025-08-21,VETRO',
+                '2025-08-22,ORGANICO','2025-08-24,PLASTICA E METALLI','2025-08-25,ORGANICO',
+                '2025-08-26,RESIDUO NON RICICLABILE','2025-08-27,ORGANICO','2025-08-28,CARTA',
+                '2025-08-29,ORGANICO','2025-08-31,PLASTICA E METALLI',
+                '2025-09-01,ORGANICO','2025-09-02,RESIDUO NON RICICLABILE','2025-09-03,ORGANICO',
+                '2025-09-04,VETRO','2025-09-05,ORGANICO','2025-09-07,PLASTICA E METALLI',
+                '2025-09-08,ORGANICO','2025-09-09,RESIDUO NON RICICLABILE','2025-09-10,ORGANICO',
+                '2025-09-11,CARTA','2025-09-12,ORGANICO','2025-09-14,PLASTICA E METALLI',
+                '2025-09-16,RESIDUO NON RICICLABILE','2025-09-18,VETRO','2025-09-19,ORGANICO',
+                '2025-09-21,PLASTICA E METALLI','2025-09-23,RESIDUO NON RICICLABILE',
+                '2025-09-25,CARTA','2025-09-26,ORGANICO','2025-09-28,PLASTICA E METALLI',
+                '2025-09-30,RESIDUO NON RICICLABILE','2025-10-02,VETRO','2025-10-03,ORGANICO',
+                '2025-10-05,PLASTICA E METALLI','2025-10-07,RESIDUO NON RICICLABILE',
+                '2025-10-09,CARTA','2025-10-10,ORGANICO','2025-10-12,PLASTICA E METALLI',
+                '2025-10-14,RESIDUO NON RICICLABILE','2025-10-16,VETRO','2025-10-17,ORGANICO',
+                '2025-10-19,PLASTICA E METALLI','2025-10-21,RESIDUO NON RICICLABILE',
+                '2025-10-23,CARTA','2025-10-24,ORGANICO','2025-10-26,PLASTICA E METALLI',
+                '2025-10-28,RESIDUO NON RICICLABILE','2025-10-30,VETRO','2025-10-31,ORGANICO',
+                '2025-11-02,PLASTICA E METALLI','2025-11-04,RESIDUO NON RICICLABILE',
+                '2025-11-06,CARTA','2025-11-07,ORGANICO','2025-11-09,PLASTICA E METALLI',
+                '2025-11-11,RESIDUO NON RICICLABILE','2025-11-13,VETRO','2025-11-14,ORGANICO',
+                '2025-11-16,PLASTICA E METALLI','2025-11-18,RESIDUO NON RICICLABILE',
+                '2025-11-20,CARTA','2025-11-21,ORGANICO','2025-11-23,PLASTICA E METALLI',
+                '2025-11-25,RESIDUO NON RICICLABILE','2025-11-27,VETRO','2025-11-28,ORGANICO',
+                '2025-11-30,PLASTICA E METALLI','2025-12-02,RESIDUO NON RICICLABILE',
+                '2025-12-04,CARTA','2025-12-05,ORGANICO','2025-12-07,PLASTICA E METALLI',
+                '2025-12-09,RESIDUO NON RICICLABILE','2025-12-11,VETRO','2025-12-12,ORGANICO',
+                '2025-12-14,PLASTICA E METALLI','2025-12-16,RESIDUO NON RICICLABILE',
+                '2025-12-18,CARTA','2025-12-19,ORGANICO','2025-12-21,PLASTICA E METALLI',
+                '2025-12-23,RESIDUO NON RICICLABILE','2025-12-25,VETRO','2025-12-26,ORGANICO',
+                '2025-12-28,PLASTICA E METALLI','2025-12-30,RESIDUO NON RICICLABILE'
             ];
 
             function getWasteEmoji(wasteType) {
@@ -1632,7 +1726,7 @@
             currentDate = new Date();
             selectedDate = new Date();
             updateDisplay();
-            addSyncLog('Tornato a oggi: ' + formatDateDisplay(new Date()), 'info');
+            addSyncLog('📅 Tornato a oggi: ' + formatDateDisplay(new Date()), 'info');
         }
 
         function showPopup(event) {
@@ -1661,94 +1755,6 @@
         function closePopup() {
             document.getElementById('popupOverlay').style.display = 'none';
             currentEvent = null;
-        }
-
-        function showDomainHelp() {
-            const helpText = `🔗 CONFIGURAZIONE DOMINI GOOGLE CLOUD CONSOLE
-
-📍 DOMINIO DA AGGIUNGERE (SOLO QUESTO):
-• https://franzvac.github.io
-
-❌ NON aggiungere percorsi completi come:
-• https://franzvac.github.io/agenda-calendar/ 
-
-🛠️ PROCEDURA CORRETTA:
-
-1️⃣ Vai su console.cloud.google.com
-2️⃣ Seleziona il tuo progetto
-3️⃣ Menu → API e servizi → Credenziali
-4️⃣ Clicca sul tuo OAuth 2.0 Client ID
-5️⃣ Nella sezione "Origini JavaScript autorizzate"
-6️⃣ Assicurati che ci sia SOLO: https://franzvac.github.io
-7️⃣ Rimuovi eventuali altri domini di GitHub
-8️⃣ Clicca "SALVA"
-
-⏰ Aspetta 5-10 minuti dopo aver salvato!
-
-🔧 RESET COMPLETO:
-Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F5).
-
-🔍 INFO DEBUG:
-• URL corrente: ${window.location.href}
-• Origin: ${window.location.origin}
-• Client ID: ${GOOGLE_CONFIG.clientId.substring(0, 20)}...`;
-
-            alert(helpText);
-            
-            addSyncLog('📋 Guida domini aggiornata mostrata', 'info');
-            addSyncLog(`🔍 Usa SOLO questo dominio: ${window.location.origin}`, 'warning');
-        }
-
-        function resetGoogleAPI() {
-            addSyncLog('🔄 Reset completo Google API...', 'warning');
-            
-            // Reset variabili
-            isGoogleAPILoaded = false;
-            isGISLoaded = false;
-            isGoogleAPIInitialized = false;
-            isUserAuthenticated = false;
-            tokenClient = null;
-            
-            // Reset token se presente
-            if (typeof gapi !== 'undefined' && gapi.client && gapi.client.getToken) {
-                gapi.client.setToken(null);
-            }
-            
-            updateConnectionStatus('disconnected', 'Reset completato');
-            addSyncLog('✅ Reset completato - Reinizializzazione...', 'success');
-            
-            setTimeout(() => {
-                initGoogleAPI();
-            }, 1000);
-        }
-
-        function showHelp() {
-            const helpText = `🎯 AGENDA CON GOOGLE CALENDAR
-
-📅 FUNZIONI PRINCIPALI:
-• Calendario navigabile con eventi
-• Sincronizzazione automatica Google Calendar
-• Gestione task con categorizzazione
-• Routine giornaliere automatiche
-• Raccolta differenziata 2025
-
-🔐 AUTENTICAZIONE:
-• Clicca "Login" per connetterti a Google
-• Permetti l'accesso al tuo calendario
-• Sincronizzazione automatica
-
-🔄 SINCRONIZZAZIONE:
-• "Sync": carica eventi locali su Google
-• "Import": scarica eventi da Google Calendar
-• Checkbox per auto-sync nuovi task
-
-📊 DATI INCLUSI:
-• 365 giorni raccolta differenziata 2025
-• Routine giornaliere (medicina, uscite Babu)
-• Eventi settimanali (Reina, call clienti)
-• Eventi Google Calendar integrati`;
-
-            alert(helpText);
         }
 
         // GESTIONE TASK
@@ -1805,11 +1811,11 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
                 const taskDate = new Date(dateInput + 'T00:00:00');
                 const formattedDate = taskDate.toLocaleDateString('it-IT');
                 const timeText = time ? `alle ${time}` : 'senza orario specifico';
-                addSyncLog(`Task "${title}" aggiunto per ${formattedDate} ${timeText}`, 'success');
+                addSyncLog(`📝 Task "${title}" aggiunto per ${formattedDate} ${timeText}`, 'success');
                 
             } catch (error) {
                 console.error('Errore addTask:', error);
-                addSyncLog('Errore aggiunta task', 'error');
+                addSyncLog('❌ Errore aggiunta task', 'error');
             }
         }
 
@@ -1855,38 +1861,42 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
 
         // EVENT LISTENERS E INIZIALIZZAZIONE
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('=== INIZIALIZZAZIONE WEBAPP GOOGLE CALENDAR ===');
+            console.log('=== INIZIALIZZAZIONE WEBAPP GOOGLE CALENDAR v5.0.0 ===');
             
             try {
                 initDemoTasks();
                 initCalendar();
                 
-                // Inizializza SOLO se librerie non sono già caricate
-                addSyncLog('🔍 Controllo stato librerie moderne...', 'info');
+                addSyncLog('🔍 Controllo configurazione...', 'info');
                 
-                const gapiOK = typeof gapi !== 'undefined';
-                const gisOK = typeof google !== 'undefined' && google.accounts;
+                // Verifica configurazione
+                const configValid = GOOGLE_CONFIG.apiKey !== 'TUA_API_KEY_QUI' && 
+                                  GOOGLE_CONFIG.clientId !== 'TUO_CLIENT_ID_QUI.apps.googleusercontent.com';
                 
-                if (gapiOK && gisOK) {
-                    addSyncLog('✅ Librerie già disponibili - Configurazione moderna', 'success');
-                    isGoogleAPILoaded = true;
-                    isGISLoaded = true;
-                    setTimeout(() => initModernGoogleAPI(), 500);
+                if (!configValid) {
+                    addSyncLog('⚠️ CONFIGURAZIONE MANCANTE', 'warning');
+                    addSyncLog('Modifica GOOGLE_CONFIG nel codice HTML', 'warning');
+                    addSyncLog('Clicca "Domini" per la guida completa', 'info');
+                    updateConnectionStatus('disconnected', 'Configurazione richiesta');
                 } else {
-                    addSyncLog('⏳ Attendo caricamento librerie...', 'info');
-                    addSyncLog(`GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, 'info');
+                    addSyncLog('✅ Configurazione trovata', 'success');
+                    
+                    // Controlla se le librerie sono già caricate
+                    const gapiOK = typeof gapi !== 'undefined';
+                    const gisOK = typeof google !== 'undefined' && google.accounts;
+                    
+                    if (gapiOK && gisOK) {
+                        addSyncLog('✅ Librerie già disponibili', 'success');
+                        isGoogleAPILoaded = true;
+                        isGISLoaded = true;
+                        setTimeout(() => initGoogleAPI(), 500);
+                    } else {
+                        addSyncLog('⏳ Attendo caricamento librerie...', 'info');
+                        addSyncLog(`GAPI: ${gapiOK ? '✅' : '❌'}, GIS: ${gisOK ? '✅' : '❌'}`, 'info');
+                    }
                 }
 
-                // Aggiungi diagnostica per debug
-                setTimeout(() => {
-                    addSyncLog(`🔍 Dominio corrente: ${window.location.origin}`, 'info');
-                    addSyncLog('📋 Verifica in Google Cloud Console:', 'info');
-                    addSyncLog('• OAuth 2.0 Client ID configurato', 'info');
-                    addSyncLog('• Origini JavaScript autorizzate incluso questo dominio', 'info');
-                    addSyncLog('• Calendar API abilitata nel progetto', 'info');
-                }, 2000);
-                
-                console.log('✅ WebApp inizializzata con successo');
+                console.log('✅ WebApp inizializzata');
                 
                 // Event listeners per popup
                 const popupOverlay = document.getElementById('popupOverlay');
@@ -1904,14 +1914,14 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
                     });
                 }
                 
-                // Messaggio di benvenuto con versione
+                // Messaggio di benvenuto
                 setTimeout(function() {
                     const today = formatDateDisplay(new Date());
                     const todayKey = formatDateKey(new Date());
                     
-                    addSyncLog(`🎯 AGENDA v4.0.0 - SISTEMA MODERNO GIS`, 'success');
+                    addSyncLog(`🎯 AGENDA v5.0.0 - SISTEMA CORRETTO`, 'success');
                     addSyncLog(`📅 ${today}`, 'info');
-                    addSyncLog('📋 Sistema inizializzato con librerie moderne', 'info');
+                    addSyncLog('📋 Sistema inizializzato correttamente', 'info');
                     addSyncLog('🗑️ Calendario raccolta differenziata 2025 caricato', 'success');
                     
                     // Controlla se oggi c'è raccolta rifiuti
@@ -1928,14 +1938,17 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
                         addSyncLog(`📅 OGGI: ${wasteToday.title} alle ${wasteToday.time}`, 'info');
                     }
                     
-                    // Mostra statistiche caricate
+                    // Mostra statistiche
                     const totalDays = Object.keys(tasks).length;
                     if (totalDays > 0) {
                         addSyncLog(`📊 ${totalDays} giorni con eventi programmati`, 'success');
                     }
                     
-                    addSyncLog('🔧 Clicca "Test" per verificare Google API', 'info');
-                    addSyncLog('🔐 Poi clicca "Login" per sistema moderno GIS', 'info');
+                    if (configValid) {
+                        addSyncLog('🔧 Clicca "Test" per diagnostica', 'info');
+                        addSyncLog('🔐 Poi clicca "Login" per connetterti', 'info');
+                    }
+                    
                 }, 1500);
                 
             } catch (error) {
@@ -1944,100 +1957,8 @@ Se continua a non funzionare, prova a ricaricare la pagina completamente (Ctrl+F
             }
         });
 
-        // Gestione caricamento Google API e GIS - SOLO MODERNA
-        window.gapiLoaded = function() {
-            addSyncLog('✅ Google API (gapi) caricata', 'success');
-            isGoogleAPILoaded = true;
-            checkAndInitialize();
-        };
-
-        window.gisLoaded = function() {
-            addSyncLog('✅ Google Identity Services caricata', 'success');
-            isGISLoaded = true;
-            checkAndInitialize();
-        };
-
-        function checkAndInitialize() {
-            if (isGoogleAPILoaded && isGISLoaded) {
-                addSyncLog('🚀 Tutte le librerie moderne caricate', 'success');
-                setTimeout(() => {
-                    // SOLO inizializzazione moderna
-                    initModernGoogleAPI();
-                }, 500);
-            }
-        }
-
-        // NUOVA funzione di inizializzazione - SOLO GIS
-        function initModernGoogleAPI() {
-            addSyncLog('🆕 Inizializzazione Google API moderna (GIS only)...', 'info');
-            updateConnectionStatus('syncing', 'Inizializzazione moderna...');
-
-            // Inizializza SOLO il client API (NO auth2)
-            gapi.load('client', async () => {
-                try {
-                    await gapi.client.init({
-                        apiKey: GOOGLE_CONFIG.apiKey,
-                        discoveryDocs: GOOGLE_CONFIG.discoveryDocs
-                    });
-
-                    addSyncLog('✅ Client API moderno inizializzato', 'success');
-
-                    // Crea token client moderno
-                    tokenClient = google.accounts.oauth2.initTokenClient({
-                        client_id: GOOGLE_CONFIG.clientId,
-                        scope: GOOGLE_CONFIG.scopes,
-                        callback: (response) => {
-                            if (response.error) {
-                                addSyncLog('❌ Errore OAuth: ' + response.error, 'error');
-                                updateConnectionStatus('disconnected', 'Errore autenticazione');
-                                return;
-                            }
-                            
-                            addSyncLog('✅ Token OAuth ricevuto', 'success');
-                            isUserAuthenticated = true;
-                            updateConnectionStatus('connected', 'Connesso via GIS');
-                            
-                            gapi.client.setToken({
-                                access_token: response.access_token
-                            });
-                            
-                            loadGoogleCalendarEvents();
-                        }
-                    });
-
-                    addSyncLog('✅ Sistema moderno configurato', 'success');
-                    isGoogleAPIInitialized = true;
-                    updateConnectionStatus('disconnected', 'Pronto per login moderno');
-
-                } catch (error) {
-                    addSyncLog('❌ Errore sistema moderno: ' + error.message, 'error');
-                    updateConnectionStatus('disconnected', 'Errore configurazione');
-                }
-            });
-        }
-
-        // Fallback per caricamento Google API
-        function checkGoogleAPI() {
-            if (typeof gapi !== 'undefined') {
-                addSyncLog('✅ Google API trovata (fallback)', 'success');
-                initGoogleAPI();
-                return true;
-            }
-            return false;
-        }
-
-        console.log('🎉 JavaScript WebApp Agenda v4.0.0 caricato!');
-
-        // DEBUG: Verifica che non ci siano funzioni duplicate
-        console.log('=== DEBUG FUNZIONI ===');
-        console.log('authenticateUser definita:', typeof window.authenticateUser);
-        console.log('testGoogleAPI definita:', typeof window.testGoogleAPI);
-
-        // Assicurati che le funzioni siano globali
-        window.authenticateUser = authenticateUser;
-        window.testGoogleAPI = testGoogleAPI;
-        window.resetGoogleAPI = resetGoogleAPI;
-        window.showDomainHelp = showDomainHelp;
+        console.log('🎉 JavaScript WebApp Agenda v5.0.0 caricato!');
     </script>
 </body>
 </html>
+                
