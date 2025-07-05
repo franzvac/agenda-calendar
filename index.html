@@ -259,15 +259,25 @@
             background: #27ae60;
             color: white;
             border: none;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
             transition: all 0.3s;
+            font-weight: bold;
+            white-space: nowrap;
         }
 
         .sync-day-btn:hover {
             background: #229954;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .sync-day-btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .time-slot {
@@ -642,9 +652,10 @@
                 <div class="daily-schedule">
                     <div class="schedule-header">
                         <span>📅 Programma del <span id="selectedDate"></span></span>
-                        <div style="display: flex; gap: 10px;">
-                            <button class="sync-day-btn" onclick="syncCurrentDay()">📤 Sync</button>
-                            <button class="sync-day-btn" onclick="importCurrentDay()">📥 Import</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button class="sync-day-btn" onclick="syncCurrentDay()" title="Sincronizza task del giorno con Google Calendar">📤 Sync Giorno</button>
+                            <button class="sync-day-btn" onclick="importCurrentDay()" title="Importa eventi Google Calendar per questo giorno">📥 Import Giorno</button>
+                            <button class="sync-day-btn" onclick="syncAllTasks()" title="Sincronizza tutti i task non sincronizzati" style="background: #3498db;">🔄 Sync Tutti</button>
                         </div>
                     </div>
                     <div id="dailySchedule"></div>
@@ -667,6 +678,18 @@
                     <div class="integration-header">
                         <div class="integration-title">📅 Google Calendar</div>
                         <div class="connection-status disconnected" id="connectionStatus">Disconnesso</div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                            <button class="sync-btn" onclick="syncFixedRoutines()" style="background: #e67e22; font-size: 12px; padding: 6px 12px;">📋 Sync Routine</button>
+                            <button class="sync-btn" onclick="syncWasteCalendar()" style="background: #8e44ad; font-size: 12px; padding: 6px 12px;">🗑️ Sync Rifiuti</button>
+                            <button class="sync-btn" onclick="clearGoogleCalendar()" style="background: #e74c3c; font-size: 12px; padding: 6px 12px;">🧹 Pulisci</button>
+                        </div>
+                        <div style="font-size: 11px; color: #bdc3c7; line-height: 1.3;">
+                            <strong>Routine:</strong> Medicina, Babu, Reina, Call<br>
+                            <strong>Rifiuti:</strong> 365 giorni raccolta 2025<br>
+                            <strong>Pulisci:</strong> Rimuove eventi creati dall'app
+                        </div>
                     </div>
                     <div class="sync-log" id="syncLog">
                         <div class="sync-log-entry info">Sistema pronto per Google Calendar</div>
@@ -754,7 +777,7 @@
         const GOOGLE_CONFIG = {
             apiKey: 'AIzaSyBcNSqX0LryFhqzjFWHiq6hMV5S1a9LQfM',
             clientId: '305495314465-j13l2f6scmoqvdadgsnvpskm89g5r6n0.apps.googleusercontent.com',
-            calendarId: 'primary', // o il tuo calendar ID specifico
+            calendarId: 'i4fptt554sm1abp0fevv62al4s@group.calendar.google.com', // o il tuo calendar ID specifico
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
             scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
         };
@@ -1109,6 +1132,7 @@
         async function syncCurrentDay() {
             if (!isUserAuthenticated) {
                 addSyncLog('🔐 Effettua il login prima di sincronizzare', 'warning');
+                alert('Devi prima effettuare il login con Google Calendar!\nClicca il pulsante "🔐 Login" in alto a destra.');
                 return;
             }
 
@@ -1117,7 +1141,8 @@
             const unsyncedTasks = dayTasks.filter(task => !task.synced && task.source !== 'google_calendar');
 
             if (unsyncedTasks.length === 0) {
-                addSyncLog('ℹ️ Nessun task da sincronizzare', 'info');
+                addSyncLog('ℹ️ Nessun task da sincronizzare per questo giorno', 'info');
+                alert('Nessun task da sincronizzare per questo giorno.');
                 return;
             }
 
@@ -1135,16 +1160,303 @@
             updateConnectionStatus('connected', 'Sincronizzazione completata');
             updateDisplay();
             updateStats();
+            
+            alert(`Sincronizzazione completata!\n${syncedCount} task su ${unsyncedTasks.length} sincronizzati con Google Calendar.`);
         }
 
         async function importCurrentDay() {
             if (!isUserAuthenticated) {
                 addSyncLog('🔐 Effettua il login prima di importare', 'warning');
+                alert('Devi prima effettuare il login con Google Calendar!\nClicca il pulsante "🔐 Login" in alto a destra.');
                 return;
             }
 
-            addSyncLog('📥 Importazione eventi del giorno...', 'info');
+            addSyncLog('📥 Importazione eventi del giorno da Google Calendar...', 'info');
             await loadGoogleCalendarEvents();
+            alert('Importazione completata!\nGli eventi di Google Calendar sono stati aggiornati.');
+        }
+
+        // SINCRONIZZAZIONE ROUTINE E RACCOLTA RIFIUTI
+        async function syncFixedRoutines() {
+            if (!isUserAuthenticated) {
+                addSyncLog('🔐 Effettua il login prima di sincronizzare', 'warning');
+                alert('Devi prima effettuare il login con Google Calendar!');
+                return;
+            }
+
+            const confirmSync = confirm(`Vuoi sincronizzare le ROUTINE FISSE con Google Calendar?\n\n📋 Include:\n• Medicina Annamaria (3 volte al giorno)\n• Uscite Babu (2 volte al giorno)\n• Reina pulizie (Lunedì, Mercoledì, Venerdì)\n• Call clienti (Lunedì sera)\n\nQuesti eventi verranno creati come ricorrenti per i prossimi 30 giorni.`);
+            
+            if (!confirmSync) return;
+
+            addSyncLog('📋 Sincronizzazione routine fisse...', 'info');
+            updateConnectionStatus('syncing', 'Sync routine...');
+
+            let syncedCount = 0;
+            const today = new Date();
+            const endDate = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 giorni
+
+            try {
+                // Routine medicina Annamaria
+                const medicineEvents = [
+                    { time: '09:00', title: '💊 Medicina Annamaria - Mattino', description: 'Somministrazione medicina mattutina per Annamaria' },
+                    { time: '17:00', title: '💊 Medicina Annamaria - Pomeriggio', description: 'Somministrazione medicina pomeridiana per Annamaria' },
+                    { time: '22:30', title: '💊 Medicina Annamaria - Sera', description: 'Somministrazione medicina serale per Annamaria' }
+                ];
+
+                for (const med of medicineEvents) {
+                    if (await createRecurringEvent(med, today, endDate, 'daily')) {
+                        syncedCount++;
+                    }
+                }
+
+                // Routine Babu
+                const babuEvents = [
+                    { time: '07:30', title: '🐕 Uscita Babu - Mattino', description: 'Uscita mattutina per Babu - passeggiata e bisogni' },
+                    { time: '19:00', title: '🐕 Uscita Babu - Sera', description: 'Uscita serale per Babu - passeggiata e bisogni' }
+                ];
+
+                for (const babu of babuEvents) {
+                    if (await createRecurringEvent(babu, today, endDate, 'daily')) {
+                        syncedCount++;
+                    }
+                }
+
+                // Reina pulizie (Lunedì, Mercoledì, Venerdì)
+                const reinaEvent = {
+                    time: '09:00',
+                    title: '🏠 Reina - Pulizie Casa',
+                    description: 'Pulizie domestiche con Reina - bagni, cucina, camere'
+                };
+
+                if (await createRecurringEvent(reinaEvent, today, endDate, 'weekly', [1, 3, 5])) { // Lunedì, Mercoledì, Venerdì
+                    syncedCount++;
+                }
+
+                // Call clienti (Lunedì)
+                const callEvent = {
+                    time: '18:00',
+                    title: '📞 Call Reaplace.it',
+                    description: 'Chiamata settimanale fissa con il cliente Reaplace.it'
+                };
+
+                if (await createRecurringEvent(callEvent, today, endDate, 'weekly', [1])) { // Solo Lunedì
+                    syncedCount++;
+                }
+
+                addSyncLog(`✅ ${syncedCount} routine sincronizzate`, 'success');
+                updateConnectionStatus('connected', 'Routine sincronizzate');
+                alert(`Routine sincronizzate con successo!\n${syncedCount} eventi ricorrenti creati in Google Calendar per i prossimi 30 giorni.`);
+
+            } catch (error) {
+                addSyncLog('❌ Errore sincronizzazione routine: ' + error.message, 'error');
+                updateConnectionStatus('connected', 'Errore sync routine');
+                alert('Errore durante la sincronizzazione delle routine.\nVerifica il log per dettagli.');
+            }
+        }
+
+        async function syncWasteCalendar() {
+            if (!isUserAuthenticated) {
+                addSyncLog('🔐 Effettua il login prima di sincronizzare', 'warning');
+                alert('Devi prima effettuare il login con Google Calendar!');
+                return;
+            }
+
+            const confirmSync = confirm(`Vuoi sincronizzare il CALENDARIO RACCOLTA RIFIUTI con Google Calendar?\n\n🗑️ Include:\n• 365 giorni di raccolta differenziata 2025\n• Carta, Vetro, Plastica, Organico, Residuo\n• Promemoria alle 21:00 per esporre i rifiuti\n\nATTENZIONE: Questo creerà molti eventi nel tuo calendario!`);
+            
+            if (!confirmSync) return;
+
+            addSyncLog('🗑️ Sincronizzazione calendario rifiuti...', 'info');
+            updateConnectionStatus('syncing', 'Sync rifiuti...');
+
+            let syncedCount = 0;
+            let errorCount = 0;
+
+            try {
+                // Trova tutti i task di raccolta rifiuti
+                const wasteTasksToSync = [];
+                Object.keys(tasks).forEach(dateKey => {
+                    const dayTasks = tasks[dateKey] || [];
+                    const wasteTasks = dayTasks.filter(task => 
+                        task.id && task.id.toString().startsWith('waste_') && 
+                        !task.synced
+                    );
+                    wasteTasks.forEach(task => {
+                        wasteTasksToSync.push({task, dateKey});
+                    });
+                });
+
+                addSyncLog(`📊 Trovati ${wasteTasksToSync.length} giorni di raccolta da sincronizzare`, 'info');
+
+                for (const {task, dateKey} of wasteTasksToSync) {
+                    try {
+                        if (await syncTaskToGoogle(task, dateKey)) {
+                            syncedCount++;
+                        } else {
+                            errorCount++;
+                        }
+                        
+                        // Pausa per non sovraccaricare l'API
+                        if (syncedCount % 10 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            addSyncLog(`📈 Progresso: ${syncedCount}/${wasteTasksToSync.length}`, 'info');
+                        }
+                        
+                    } catch (error) {
+                        errorCount++;
+                        if (errorCount < 5) { // Mostra solo i primi 5 errori
+                            addSyncLog(`⚠️ Errore su ${task.title}: ${error.message}`, 'warning');
+                        }
+                    }
+                }
+
+                addSyncLog(`✅ Raccolta rifiuti sincronizzata: ${syncedCount} eventi`, 'success');
+                if (errorCount > 0) {
+                    addSyncLog(`⚠️ ${errorCount} errori durante la sincronizzazione`, 'warning');
+                }
+                
+                updateConnectionStatus('connected', 'Rifiuti sincronizzati');
+                updateDisplay();
+                updateStats();
+                
+                alert(`Calendario raccolta rifiuti sincronizzato!\n\n✅ ${syncedCount} eventi sincronizzati\n❌ ${errorCount} errori\n\nControlla Google Calendar per vedere tutti gli eventi.`);
+
+            } catch (error) {
+                addSyncLog('❌ Errore sincronizzazione rifiuti: ' + error.message, 'error');
+                updateConnectionStatus('connected', 'Errore sync rifiuti');
+                alert('Errore durante la sincronizzazione del calendario rifiuti.\nVerifica il log per dettagli.');
+            }
+        }
+
+        async function clearGoogleCalendar() {
+            if (!isUserAuthenticated) {
+                addSyncLog('🔐 Effettua il login prima di procedere', 'warning');
+                alert('Devi prima effettuare il login con Google Calendar!');
+                return;
+            }
+
+            const confirmClear = confirm(`🧹 PULIZIA GOOGLE CALENDAR\n\nQuesto rimuoverà TUTTI gli eventi creati da questa app dal tuo Google Calendar.\n\nInclude:\n• Routine fisse\n• Calendario raccolta rifiuti\n• Task sincronizzati\n\nSei sicuro di voler procedere?\n\nATTENZIONE: Questa azione non può essere annullata!`);
+            
+            if (!confirmClear) return;
+
+            const doubleConfirm = confirm(`⚠️ CONFERMA FINALE\n\nStai per eliminare tutti gli eventi creati da questa app.\n\nConfermi definitivamente?`);
+            if (!doubleConfirm) return;
+
+            addSyncLog('🧹 Pulizia Google Calendar in corso...', 'info');
+            updateConnectionStatus('syncing', 'Pulizia...');
+
+            try {
+                // Carica eventi dal calendario
+                const now = new Date();
+                const timeMin = new Date(now.getFullYear(), 0, 1).toISOString(); // Inizio anno
+                const timeMax = new Date(now.getFullYear() + 1, 0, 1).toISOString(); // Fine anno
+
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: GOOGLE_CONFIG.calendarId,
+                    timeMin: timeMin,
+                    timeMax: timeMax,
+                    showDeleted: false,
+                    singleEvents: true,
+                    maxResults: 2500 // Limite alto per catturare tutti gli eventi
+                });
+
+                const events = response.result.items || [];
+                addSyncLog(`📊 Trovati ${events.length} eventi da controllare`, 'info');
+
+                // Filtra eventi creati dall'app (hanno una descrizione specifica)
+                const appEvents = events.filter(event => 
+                    event.description && (
+                        event.description.includes('Agenda Personale') ||
+                        event.description.includes('Raccolta differenziata') ||
+                        event.description.includes('Somministrazione medicina') ||
+                        event.description.includes('Uscita') ||
+                        event.description.includes('Pulizie domestiche') ||
+                        event.description.includes('Chiamata settimanale')
+                    )
+                );
+
+                addSyncLog(`🎯 ${appEvents.length} eventi dell'app da eliminare`, 'info');
+
+                let deletedCount = 0;
+                for (const event of appEvents) {
+                    try {
+                        await gapi.client.calendar.events.delete({
+                            calendarId: GOOGLE_CONFIG.calendarId,
+                            eventId: event.id
+                        });
+                        deletedCount++;
+                        
+                        if (deletedCount % 10 === 0) {
+                            addSyncLog(`🗑️ Eliminati: ${deletedCount}/${appEvents.length}`, 'info');
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    } catch (error) {
+                        addSyncLog(`⚠️ Errore eliminazione ${event.summary}`, 'warning');
+                    }
+                }
+
+                // Resetta lo stato di sincronizzazione nei task locali
+                Object.keys(tasks).forEach(dateKey => {
+                    tasks[dateKey].forEach(task => {
+                        if (task.synced) {
+                            task.synced = false;
+                            delete task.googleEventId;
+                        }
+                    });
+                });
+
+                addSyncLog(`✅ Pulizia completata: ${deletedCount} eventi eliminati`, 'success');
+                updateConnectionStatus('connected', 'Pulizia completata');
+                updateDisplay();
+                updateStats();
+                
+                alert(`Pulizia Google Calendar completata!\n\n🗑️ ${deletedCount} eventi eliminati\n\nIl tuo calendario è ora pulito dagli eventi dell'app.`);
+
+            } catch (error) {
+                addSyncLog('❌ Errore durante pulizia: ' + error.message, 'error');
+                updateConnectionStatus('connected', 'Errore pulizia');
+                alert('Errore durante la pulizia del calendario.\nVerifica il log per dettagli.');
+            }
+        }
+
+        // Funzione helper per creare eventi ricorrenti
+        async function createRecurringEvent(eventData, startDate, endDate, frequency, daysOfWeek = null) {
+            try {
+                const event = {
+                    summary: eventData.title,
+                    description: eventData.description + '\n\nCreato da: Agenda Personale',
+                    start: {
+                        dateTime: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 
+                                         parseInt(eventData.time.split(':')[0]), parseInt(eventData.time.split(':')[1])).toISOString()
+                    },
+                    end: {
+                        dateTime: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 
+                                         parseInt(eventData.time.split(':')[0]) + 1, parseInt(eventData.time.split(':')[1])).toISOString()
+                    }
+                };
+
+                // Configura ricorrenza
+                if (frequency === 'daily') {
+                    event.recurrence = [`RRULE:FREQ=DAILY;UNTIL=${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`];
+                } else if (frequency === 'weekly' && daysOfWeek) {
+                    const days = daysOfWeek.map(day => ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][day]).join(',');
+                    event.recurrence = [`RRULE:FREQ=WEEKLY;BYDAY=${days};UNTIL=${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`];
+                }
+
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: GOOGLE_CONFIG.calendarId,
+                    resource: event
+                });
+
+                if (response.result) {
+                    addSyncLog(`📅 Creato evento ricorrente: ${eventData.title}`, 'success');
+                    return true;
+                }
+                return false;
+
+            } catch (error) {
+                addSyncLog(`❌ Errore creazione ${eventData.title}: ${error.message}`, 'error');
+                return false;
+            }
         }
 
         // FUNZIONI UI
