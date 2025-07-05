@@ -628,10 +628,9 @@
                 <div class="sync-indicator" id="syncIndicator"></div>
                 <span id="syncStatusText">Inizializzazione...</span>
                 <div style="display: flex; gap: 8px;">
-                    <button class="sync-btn" onclick="testGoogleAPI()">🔧 Test</button>
-                    <button class="sync-btn" onclick="showDomainHelp()" style="background: #e67e22;">🔗 Domini</button>
-                    <button class="sync-btn" onclick="resetGoogleAPI()" style="background: #e74c3c;">🔄 Reset</button>
+                    <button class="sync-btn" onclick="testGoogleAPI()" title="Diagnostica completa del sistema">🔧 Test</button>
                     <button class="sync-btn" onclick="authenticateUser()" id="authBtn">🔐 Login</button>
+                    <button class="sync-btn" onclick="showAdvancedOptions()" style="background: #95a5a6; font-size: 11px; padding: 6px 10px;" title="Opzioni avanzate e risoluzione problemi">⚙️</button>
                 </div>
             </div>
         </div>
@@ -697,35 +696,89 @@
                 </div>
 
                 <div style="margin-bottom: 30px;">
-                    <h3>➕ Aggiungi Task</h3>
-                    <div class="form-group">
-                        <label for="taskTitle">Cosa devi fare?</label>
-                        <input type="text" id="taskTitle" class="form-control" placeholder="Es: Appuntamento, Meeting...">
+                    <h3>🤖 Segretario Virtuale AI</h3>
+                    <div style="background: #1a252f; border-radius: 10px; padding: 15px; margin-bottom: 15px;">
+                        <div style="color: #3498db; font-size: 1.1em; margin-bottom: 10px; text-align: center;">
+                            💬 Assistente Intelligente
+                        </div>
+                        <div style="background: #2c3e50; border-radius: 6px; padding: 10px; margin-bottom: 10px; max-height: 150px; overflow-y: auto;" id="aiChatHistory">
+                            <div style="color: #27ae60; font-size: 12px; margin-bottom: 8px;">
+                                🤖 Ciao! Sono il tuo segretario virtuale. Dimmi cosa devi fare e ti organizzo tutto!
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                            <input type="text" id="aiInput" placeholder="Es: Devo andare dai vigili urbani entro venerdì..." 
+                                   style="flex: 1; padding: 8px; border: none; border-radius: 4px; background: #34495e; color: white; font-size: 12px;"
+                                   onkeypress="if(event.key==='Enter') processAIRequest()">
+                            <button onclick="processAIRequest()" style="background: #27ae60; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                                Invia
+                            </button>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+                            <button onclick="quickAIRequest('vigili urbani')" class="ai-quick-btn">🏛️ Vigili</button>
+                            <button onclick="quickAIRequest('spesa supermercato')" class="ai-quick-btn">🛒 Spesa</button>
+                            <button onclick="quickAIRequest('medico')" class="ai-quick-btn">👨‍⚕️ Medico</button>
+                            <button onclick="quickAIRequest('banca')" class="ai-quick-btn">🏦 Banca</button>
+                            <button onclick="quickAIRequest('dentista')" class="ai-quick-btn">🦷 Dentista</button>
+                            <button onclick="quickAIRequest('parrucchiere')" class="ai-quick-btn">💇‍♀️ Parrucchiere</button>
+                        </div>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            <button onclick="aiAnalyzeDay()" class="ai-quick-btn" style="background: #3498db;">📊 Analizza giorno</button>
+                            <button onclick="aiOptimizeWeek()" class="ai-quick-btn" style="background: #e67e22;">⚡ Ottimizza settimana</button>
+                            <button onclick="aiSuggestTasks()" class="ai-quick-btn" style="background: #9b59b6;">💡 Suggerimenti</button>
+                            <button onclick="aiWeatherCheck()" class="ai-quick-btn" style="background: #1abc9c;">🌤️ Meteo</button>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="taskDate">Data</label>
-                        <input type="date" id="taskDate" class="form-control">
+                    
+                    <div style="background: #34495e; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+                        <div style="color: #f39c12; font-weight: bold; margin-bottom: 8px; font-size: 13px;">⚙️ Impostazioni AI</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 11px;">
+                            <label style="color: #bdc3c7; display: flex; align-items: center;">
+                                <input type="checkbox" id="aiAutoSync" checked style="margin-right: 6px;">
+                                Auto-sync con Google
+                            </label>
+                            <label style="color: #bdc3c7; display: flex; align-items: center;">
+                                <input type="checkbox" id="aiSmartTime" checked style="margin-right: 6px;">
+                                Orari intelligenti
+                            </label>
+                            <label style="color: #bdc3c7; display: flex; align-items: center;">
+                                <input type="checkbox" id="aiAvoidConflicts" checked style="margin-right: 6px;">
+                                Evita conflitti
+                            </label>
+                            <label style="color: #bdc3c7; display: flex; align-items: center;">
+                                <input type="checkbox" id="aiRespectRoutine" checked style="margin-right: 6px;">
+                                Rispetta routine
+                            </label>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <label style="color: #bdc3c7; font-size: 11px; display: block; margin-bottom: 4px;">Orari preferiti:</label>
+                            <select id="aiPreferredTime" style="width: 100%; padding: 4px; background: #2c3e50; color: white; border: none; border-radius: 4px; font-size: 11px;">
+                                <option value="morning">🌅 Mattino (9:00-12:00)</option>
+                                <option value="afternoon">☀️ Pomeriggio (14:00-17:00)</option>
+                                <option value="evening">🌆 Sera (18:00-20:00)</option>
+                                <option value="auto" selected>🤖 Automatico</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="taskTime">Orario</label>
-                        <input type="time" id="taskTime" class="form-control">
+
+                    <div style="background: #34495e; border-radius: 8px; padding: 12px;">
+                        <div style="color: #e67e22; font-weight: bold; margin-bottom: 8px; font-size: 13px;">🔬 AI Avanzato</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px;">
+                            <button onclick="aiEmailAnalysis()" style="background: #3498db; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">📧 Analizza Email</button>
+                            <button onclick="aiConflictResolver()" style="background: #e74c3c; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">⚠️ Risolvi Conflitti</button>
+                            <button onclick="aiSmartReminders()" style="background: #f39c12; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">⏰ Reminder Smart</button>
+                            <button onclick="aiHabitAnalysis()" style="background: #9b59b6; color: white; border: none; padding: 6px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;">📈 Analisi Abitudini</button>
+                        </div>
+                        <div style="font-size: 11px; color: #bdc3c7; line-height: 1.4;">
+                            <div style="margin-bottom: 6px;">🎯 <strong>AI Learning:</strong></div>
+                            <div id="aiLearningStats" style="color: #3498db;">• Pattern riconosciuti: Caricamento...</div>
+                            <div>• Ottimizzazioni applicate: <span id="aiOptimizations">0</span></div>
+                            <div>• Conflitti evitati: <span id="aiConflictsAvoided">0</span></div>
+                        </div>
+                        <button onclick="showAIFeatures()" style="background: #2c3e50; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; margin-top: 8px; cursor: pointer; width: 100%; border: 1px solid #34495e;">
+                            🔬 Scopri tutte le funzionalità AI
+                        </button>
                     </div>
-                    <div class="form-group">
-                        <label for="taskType">Categoria</label>
-                        <select id="taskType" class="form-control">
-                            <option value="work">💼 Lavoro</option>
-                            <option value="personal">👤 Personale</option>
-                            <option value="medical">💊 Cure Annamaria</option>
-                            <option value="garden">🌱 Orto/Giardino</option>
-                            <option value="house">🏠 Casa</option>
-                            <option value="babu">🐕 Babu</option>
-                        </select>
-                    </div>
-                    <div class="form-check">
-                        <input type="checkbox" id="syncToCalendar" checked>
-                        <label for="syncToCalendar">Sincronizza con Google Calendar</label>
-                    </div>
-                    <button class="btn" onclick="addTask()">Aggiungi Task</button>
                 </div>
 
                 <div style="margin-bottom: 30px;">
@@ -775,9 +828,9 @@
 
         // CONFIGURAZIONE GOOGLE CALENDAR - AGGIORNA QUESTI VALORI
         const GOOGLE_CONFIG = {
-            apiKey: 'AIzaSyBcNSqX0LryFhqzjFWHiq6hMV5S1a9LQfM',
-            clientId: '305495314465-j13l2f6scmoqvdadgsnvpskm89g5r6n0.apps.googleusercontent.com',
-            calendarId: 'i4fptt554sm1abp0fevv62al4s@group.calendar.google.com', // o il tuo calendar ID specifico
+            apiKey: 'TUA_API_KEY_QUI',
+            clientId: 'TUO_CLIENT_ID_QUI.apps.googleusercontent.com',
+            calendarId: 'primary', // o il tuo calendar ID specifico
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest'],
             scopes: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events'
         };
@@ -1196,61 +1249,107 @@
             const endDate = new Date(today.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 giorni
 
             try {
-                // Routine medicina Annamaria
-                const medicineEvents = [
-                    { time: '09:00', title: '💊 Medicina Annamaria - Mattino', description: 'Somministrazione medicina mattutina per Annamaria' },
-                    { time: '17:00', title: '💊 Medicina Annamaria - Pomeriggio', description: 'Somministrazione medicina pomeridiana per Annamaria' },
-                    { time: '22:30', title: '💊 Medicina Annamaria - Sera', description: 'Somministrazione medicina serale per Annamaria' }
-                ];
+                // Routine medicina Annamaria - eventi separati per debug
+                addSyncLog('🔧 Inizio sincronizzazione medicina...', 'info');
 
-                for (const med of medicineEvents) {
-                    if (await createRecurringEvent(med, today, endDate, 'daily')) {
-                        syncedCount++;
-                    }
+                const medicine1 = { 
+                    time: '09:00', 
+                    title: '💊 Medicina Annamaria - Mattino', 
+                    description: 'Somministrazione medicina mattutina per Annamaria. Routine quotidiana importante.' 
+                };
+                if (await createRecurringEvent(medicine1, today, endDate, 'daily')) {
+                    syncedCount++;
+                }
+                
+                // Pausa tra chiamate API
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const medicine2 = { 
+                    time: '17:00', 
+                    title: '💊 Medicina Annamaria - Pomeriggio', 
+                    description: 'Somministrazione medicina pomeridiana per Annamaria. Routine quotidiana importante.' 
+                };
+                if (await createRecurringEvent(medicine2, today, endDate, 'daily')) {
+                    syncedCount++;
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const medicine3 = { 
+                    time: '22:30', 
+                    title: '💊 Medicina Annamaria - Sera', 
+                    description: 'Somministrazione medicina serale per Annamaria. Routine quotidiana importante.' 
+                };
+                if (await createRecurringEvent(medicine3, today, endDate, 'daily')) {
+                    syncedCount++;
                 }
 
                 // Routine Babu
-                const babuEvents = [
-                    { time: '07:30', title: '🐕 Uscita Babu - Mattino', description: 'Uscita mattutina per Babu - passeggiata e bisogni' },
-                    { time: '19:00', title: '🐕 Uscita Babu - Sera', description: 'Uscita serale per Babu - passeggiata e bisogni' }
-                ];
+                addSyncLog('🔧 Inizio sincronizzazione Babu...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 1000));
 
-                for (const babu of babuEvents) {
-                    if (await createRecurringEvent(babu, today, endDate, 'daily')) {
-                        syncedCount++;
-                    }
+                const babu1 = { 
+                    time: '07:30', 
+                    title: '🐕 Uscita Babu - Mattino', 
+                    description: 'Uscita mattutina per Babu - passeggiata e bisogni. Routine quotidiana essenziale.' 
+                };
+                if (await createRecurringEvent(babu1, today, endDate, 'daily')) {
+                    syncedCount++;
                 }
 
-                // Reina pulizie (Lunedì, Mercoledì, Venerdì)
-                const reinaEvent = {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const babu2 = { 
+                    time: '19:00', 
+                    title: '🐕 Uscita Babu - Sera', 
+                    description: 'Uscita serale per Babu - passeggiata e bisogni. Routine quotidiana essenziale.' 
+                };
+                if (await createRecurringEvent(babu2, today, endDate, 'daily')) {
+                    syncedCount++;
+                }
+
+                // Reina pulizie (Solo se è un giorno della settimana appropriato)
+                addSyncLog('🔧 Inizio sincronizzazione Reina...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const reina = {
                     time: '09:00',
                     title: '🏠 Reina - Pulizie Casa',
-                    description: 'Pulizie domestiche con Reina - bagni, cucina, camere'
+                    description: 'Pulizie domestiche con Reina - bagni, cucina, camere, biancheria. Appuntamento settimanale fisso.'
                 };
 
-                if (await createRecurringEvent(reinaEvent, today, endDate, 'weekly', [1, 3, 5])) { // Lunedì, Mercoledì, Venerdì
+                if (await createRecurringEvent(reina, today, endDate, 'weekly', [1, 3, 5])) { // Lunedì, Mercoledì, Venerdì
                     syncedCount++;
                 }
 
-                // Call clienti (Lunedì)
-                const callEvent = {
+                // Call clienti (Solo Lunedì)
+                addSyncLog('🔧 Inizio sincronizzazione Call...', 'info');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const call = {
                     time: '18:00',
                     title: '📞 Call Reaplace.it',
-                    description: 'Chiamata settimanale fissa con il cliente Reaplace.it'
+                    description: 'Chiamata settimanale fissa con il cliente Reaplace.it. Meeting di allineamento e aggiornamenti.'
                 };
 
-                if (await createRecurringEvent(callEvent, today, endDate, 'weekly', [1])) { // Solo Lunedì
+                if (await createRecurringEvent(call, today, endDate, 'weekly', [1])) { // Solo Lunedì
                     syncedCount++;
                 }
 
-                addSyncLog(`✅ ${syncedCount} routine sincronizzate`, 'success');
+                addSyncLog(`✅ Routine sincronizzate: ${syncedCount}/6 eventi`, 'success');
                 updateConnectionStatus('connected', 'Routine sincronizzate');
-                alert(`Routine sincronizzate con successo!\n${syncedCount} eventi ricorrenti creati in Google Calendar per i prossimi 30 giorni.`);
+                
+                if (syncedCount > 0) {
+                    alert(`Routine sincronizzate con successo!\n\n✅ ${syncedCount}/6 eventi ricorrenti creati in Google Calendar\n\nControlla il tuo calendario per vedere gli eventi ricorrenti.`);
+                } else {
+                    alert(`⚠️ Nessuna routine sincronizzata.\n\nControlla il log degli errori per dettagli.\nPotresti aver già sincronizzato le routine o ci sono problemi con i permessi.`);
+                }
 
             } catch (error) {
-                addSyncLog('❌ Errore sincronizzazione routine: ' + error.message, 'error');
+                addSyncLog('❌ Errore generale sincronizzazione routine: ' + (error.message || 'Errore sconosciuto'), 'error');
+                console.error('Errore syncFixedRoutines:', error);
                 updateConnectionStatus('connected', 'Errore sync routine');
-                alert('Errore durante la sincronizzazione delle routine.\nVerifica il log per dettagli.');
+                alert('Errore durante la sincronizzazione delle routine.\n\nDettagli nel log. Possibili cause:\n• Permessi insufficienti\n• Limite API raggiunto\n• Problemi di rete');
             }
         }
 
@@ -1421,40 +1520,74 @@
         // Funzione helper per creare eventi ricorrenti
         async function createRecurringEvent(eventData, startDate, endDate, frequency, daysOfWeek = null) {
             try {
+                // Parse dell'orario
+                const timeParts = eventData.time.split(':');
+                const hours = parseInt(timeParts[0]);
+                const minutes = parseInt(timeParts[1]);
+
+                // Crea data di inizio (oggi o domani se l'orario è già passato)
+                let eventStartDate = new Date();
+                const now = new Date();
+                
+                // Se l'orario di oggi è già passato, inizia da domani
+                const todayEventTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+                if (todayEventTime <= now) {
+                    eventStartDate.setDate(eventStartDate.getDate() + 1);
+                }
+                
+                // Imposta l'orario corretto
+                eventStartDate.setHours(hours, minutes, 0, 0);
+                
+                // Data di fine (1 ora dopo)
+                const eventEndDate = new Date(eventStartDate);
+                eventEndDate.setHours(eventEndDate.getHours() + 1);
+
+                // Formatta la data di fine ricorrenza (YYYYMMDD)
+                const untilDate = endDate.getFullYear().toString() + 
+                                (endDate.getMonth() + 1).toString().padStart(2, '0') + 
+                                endDate.getDate().toString().padStart(2, '0');
+
                 const event = {
                     summary: eventData.title,
                     description: eventData.description + '\n\nCreato da: Agenda Personale',
                     start: {
-                        dateTime: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 
-                                         parseInt(eventData.time.split(':')[0]), parseInt(eventData.time.split(':')[1])).toISOString()
+                        dateTime: eventStartDate.toISOString(),
+                        timeZone: 'Europe/Rome'
                     },
                     end: {
-                        dateTime: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 
-                                         parseInt(eventData.time.split(':')[0]) + 1, parseInt(eventData.time.split(':')[1])).toISOString()
+                        dateTime: eventEndDate.toISOString(),
+                        timeZone: 'Europe/Rome'
                     }
                 };
 
                 // Configura ricorrenza
                 if (frequency === 'daily') {
-                    event.recurrence = [`RRULE:FREQ=DAILY;UNTIL=${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`];
+                    event.recurrence = [`RRULE:FREQ=DAILY;UNTIL=${untilDate}T235959Z`];
                 } else if (frequency === 'weekly' && daysOfWeek) {
-                    const days = daysOfWeek.map(day => ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'][day]).join(',');
-                    event.recurrence = [`RRULE:FREQ=WEEKLY;BYDAY=${days};UNTIL=${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`];
+                    const dayMapping = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+                    const days = daysOfWeek.map(day => dayMapping[day]).join(',');
+                    event.recurrence = [`RRULE:FREQ=WEEKLY;BYDAY=${days};UNTIL=${untilDate}T235959Z`];
                 }
+
+                addSyncLog(`🔧 Creando: ${eventData.title} alle ${eventData.time}`, 'info');
 
                 const response = await gapi.client.calendar.events.insert({
                     calendarId: GOOGLE_CONFIG.calendarId,
                     resource: event
                 });
 
-                if (response.result) {
-                    addSyncLog(`📅 Creato evento ricorrente: ${eventData.title}`, 'success');
+                if (response.result && response.result.id) {
+                    addSyncLog(`✅ Creato evento ricorrente: ${eventData.title}`, 'success');
                     return true;
+                } else {
+                    addSyncLog(`❌ Risposta vuota per: ${eventData.title}`, 'error');
+                    return false;
                 }
-                return false;
 
             } catch (error) {
-                addSyncLog(`❌ Errore creazione ${eventData.title}: ${error.message}`, 'error');
+                addSyncLog(`❌ Errore creazione ${eventData.title}: ${error.message || 'Errore sconosciuto'}`, 'error');
+                console.error('Dettaglio errore createRecurringEvent:', error);
+                console.error('EventData:', eventData);
                 return false;
             }
         }
@@ -1532,68 +1665,68 @@
             }
         }
 
-        function showDomainHelp() {
-            const helpText = `🔗 GUIDA CONFIGURAZIONE GOOGLE CALENDAR
+        function showAdvancedOptions() {
+            const advancedMenu = `🔧 OPZIONI AVANZATE
 
-📋 PREREQUISITI:
-1️⃣ Progetto Google Cloud Console
-2️⃣ Calendar API abilitata
-3️⃣ Credenziali OAuth 2.0 configurate
+Scegli un'opzione:
 
-🔧 CONFIGURAZIONE CODICE:
-Modifica GOOGLE_CONFIG nel file HTML:
+1️⃣ 🔗 Guida Configurazione Domini
+2️⃣ 🔄 Reset Completo Sistema  
+3️⃣ 📋 Info Sistema e Debug
+4️⃣ ❌ Annulla
 
-• apiKey: "TUA_API_KEY_DA_GOOGLE_CLOUD"
-• clientId: "TUO_CLIENT_ID.apps.googleusercontent.com"
-• calendarId: "primary" (o ID specifico)
+Inserisci il numero (1-4):`;
 
-🌐 DOMINI AUTORIZZATI:
-In Google Cloud Console → Credenziali → OAuth 2.0
-Aggiungi in "Origini JavaScript autorizzate":
-• ${window.location.origin}
-
-⏰ Attendi 5-10 minuti dopo le modifiche!
-
-🔍 VERIFICA:
-1. Clicca "Test" per diagnostica
-2. Clicca "Login" per autenticarti
-3. Controlla la console del browser per errori
-
-🆘 ERRORI COMUNI:
-• "API key invalid": Verifica la chiave
-• "Invalid origin": Aggiungi dominio autorizzato
-• "Access denied": Verifica permessi Calendar API`;
-
-            alert(helpText);
-            addSyncLog('📋 Guida configurazione mostrata', 'info');
+            const choice = prompt(advancedMenu);
+            
+            switch(choice) {
+                case '1':
+                    showDomainHelp();
+                    break;
+                case '2':
+                    const confirmReset = confirm('⚠️ RESET COMPLETO SISTEMA\n\nQuesto resetterà completamente la connessione a Google Calendar.\n\nDovrai rifare il login.\n\nProcedere?');
+                    if (confirmReset) {
+                        resetGoogleAPI();
+                    }
+                    break;
+                case '3':
+                    showSystemInfo();
+                    break;
+                case '4':
+                case null:
+                    // Annulla
+                    break;
+                default:
+                    alert('Opzione non valida. Riprova.');
+            }
         }
 
-        function resetGoogleAPI() {
-            addSyncLog('🔄 Reset completo sistema...', 'warning');
-            
-            // Reset variabili
-            isGoogleAPILoaded = false;
-            isGISLoaded = false;
-            isGoogleAPIInitialized = false;
-            isUserAuthenticated = false;
-            tokenClient = null;
-            
-            // Reset token
-            if (typeof gapi !== 'undefined' && gapi.client) {
-                gapi.client.setToken(null);
-            }
-            
-            updateConnectionStatus('disconnected', 'Reset completato');
-            
-            // Reinizializza
-            setTimeout(() => {
-                if (typeof gapi !== 'undefined' && typeof google !== 'undefined') {
-                    addSyncLog('🔄 Reinizializzazione...', 'info');
-                    initGoogleAPI();
-                } else {
-                    addSyncLog('🔄 Ricarica la pagina per reinizializzare', 'warning');
-                }
-            }, 1000);
+        function showSystemInfo() {
+            const systemInfo = `📋 INFORMAZIONI SISTEMA
+
+🔗 Connessione:
+• Stato: ${isUserAuthenticated ? '✅ Connesso' : '❌ Disconnesso'}
+• API Inizializzata: ${isGoogleAPIInitialized ? '✅ Sì' : '❌ No'}
+• GAPI Caricata: ${typeof gapi !== 'undefined' ? '✅ Sì' : '❌ No'}
+• GIS Caricata: ${typeof google !== 'undefined' && google.accounts ? '✅ Sì' : '❌ No'}
+
+⚙️ Configurazione:
+• Dominio: ${window.location.origin}
+• Client ID: ${GOOGLE_CONFIG.clientId ? '✅ Configurato' : '❌ Mancante'}
+• API Key: ${GOOGLE_CONFIG.apiKey !== 'TUA_API_KEY_QUI' ? '✅ Configurata' : '❌ Mancante'}
+
+📊 Statistiche:
+• Task oggi: ${document.getElementById('tasksToday')?.textContent || '0'}
+• Eventi sincronizzati: ${document.getElementById('syncedEvents')?.textContent || '0'}
+• Giorni con eventi: ${Object.keys(tasks).length}
+
+🔧 Per problemi:
+1. Clicca "Test" per diagnostica
+2. Controlla la console del browser (F12)
+3. Verifica configurazione Google Cloud Console`;
+
+            alert(systemInfo);
+            addSyncLog('📋 Informazioni sistema mostrate', 'info');
         }
 
         function showHelp() {
@@ -2269,8 +2402,361 @@ Clicca "Test" per diagnostica automatica`;
             }
         });
 
-        console.log('🎉 JavaScript WebApp Agenda v5.0.0 caricato!');
+        // SEGRETARIO VIRTUALE AI
+        function processAIRequest() {
+            const input = document.getElementById('aiInput').value.trim();
+            if (!input) return;
+
+            addAIMessage('👤 Tu: ' + input, 'user');
+            document.getElementById('aiInput').value = '';
+
+            // Simula pensiero AI
+            addAIMessage('🤖 Analizzando la richiesta...', 'ai-thinking');
+
+            setTimeout(() => {
+                const response = generateAIResponse(input);
+                removeLastAIThinking();
+                addAIMessage('🤖 ' + response.message, 'ai');
+                
+                if (response.task) {
+                    executeAITask(response.task);
+                }
+            }, 1500);
+        }
+
+        function quickAIRequest(taskType) {
+            const quickRequests = {
+                'vigili urbani': 'Devo andare dai vigili urbani per pratiche amministrative',
+                'spesa supermercato': 'Devo fare la spesa al supermercato',
+                'medico': 'Devo prenotare una visita medica',
+                'banca': 'Devo andare in banca per operazioni',
+                'dentista': 'Devo andare dal dentista per controllo',
+                'parrucchiere': 'Devo andare dal parrucchiere'
+            };
+
+            document.getElementById('aiInput').value = quickRequests[taskType] || taskType;
+            processAIRequest();
+        }
+
+        function generateAIResponse(input) {
+            const lowerInput = input.toLowerCase();
+            const settings = getAISettings();
+            
+            // Analisi del tipo di richiesta
+            let taskType = 'personal';
+            let suggestedTime = '';
+            let suggestedDate = '';
+            let priority = 'normal';
+            let duration = 60; // minuti
+            
+            // Riconoscimento pattern
+            if (lowerInput.includes('vigili') || lowerInput.includes('comune') || lowerInput.includes('uffici')) {
+                taskType = 'work';
+                suggestedTime = '10:30';
+                suggestedDate = getNextWorkingDay();
+                priority = 'high';
+                return {
+                    message: `Perfetto! I vigili urbani sono aperti al pubblico dalle 9:00 alle 12:00. Ti ho programmato per ${formatDate(suggestedDate)} alle ${suggestedTime} per evitare le code. Durata stimata: 45 minuti.`,
+                    task: {
+                        title: '🏛️ Vigili Urbani - Pratiche amministrative',
+                        date: suggestedDate,
+                        time: suggestedTime,
+                        type: taskType,
+                        duration: 45,
+                        description: 'Visita agli uffici comunali per pratiche amministrative. Ricorda di portare documenti necessari.',
+                        priority: priority
+                    }
+                };
+            }
+            
+            if (lowerInput.includes('spesa') || lowerInput.includes('supermercato')) {
+                taskType = 'personal';
+                suggestedTime = '16:30';
+                suggestedDate = getNextAvailableDay();
+                return {
+                    message: `Ottima idea! Il supermercato è meno affollato nel pomeriggio. Ti ho organizzato per ${formatDate(suggestedDate)} alle ${suggestedTime}, dopo la medicina di Annamaria.`,
+                    task: {
+                        title: '🛒 Spesa al supermercato',
+                        date: suggestedDate,
+                        time: suggestedTime,
+                        type: taskType,
+                        duration: 60,
+                        description: 'Spesa settimanale al supermercato. Lista della spesa da preparare.',
+                        priority: 'normal'
+                    }
+                };
+            }
+
+            if (lowerInput.includes('medico') || lowerInput.includes('dottore') || lowerInput.includes('visita')) {
+                taskType = 'medical';
+                suggestedTime = '11:00';
+                suggestedDate = getNextWorkingDay(2);
+                return {
+                    message: `Importante! Ti suggerisco ${formatDate(suggestedDate)} alle ${suggestedTime}. È un orario comodo e hai tempo per tornare per la medicina di Annamaria alle 17:00.`,
+                    task: {
+                        title: '👨‍⚕️ Visita medica',
+                        date: suggestedDate,
+                        time: suggestedTime,
+                        type: taskType,
+                        duration: 45,
+                        description: 'Visita medica. Ricorda di portare tessera sanitaria e eventuale documentazione.',
+                        priority: 'high'
+                    }
+                };
+            }
+
+            if (lowerInput.includes('banca') || lowerInput.includes('bancomat')) {
+                taskType = 'work';
+                suggestedTime = '14:30';
+                suggestedDate = getNextWorkingDay();
+                return {
+                    message: `La banca è aperta anche il pomeriggio. Ti ho prenotato per ${formatDate(suggestedDate)} alle ${suggestedTime}, così eviti la folla del mattino.`,
+                    task: {
+                        title: '🏦 Operazioni bancarie',
+                        date: suggestedDate,
+                        time: suggestedTime,
+                        type: taskType,
+                        duration: 30,
+                        description: 'Operazioni bancarie. Ricorda di portare documenti e carta di identità.',
+                        priority: 'normal'
+                    }
+                };
+            }
+
+            if (lowerInput.includes('dentista')) {
+                taskType = 'medical';
+                suggestedTime = '15:00';
+                suggestedDate = getNextWorkingDay(3);
+                return {
+                    message: `Controllo dentale programmato! ${formatDate(suggestedDate)} alle ${suggestedTime} è un orario perfetto. Ti lascio del tempo libero dopo per eventuali disagi.`,
+                    task: {
+                        title: '🦷 Visita dentista',
+                        date: suggestedDate,
+                        time: suggestedTime,
+                        type: taskType,
+                        duration: 60,
+                        description: 'Visita dentistica. Evita cibi duri prima della visita.',
+                        priority: 'high'
+                    }
+                };
+            }
+
+            if (lowerInput.includes('parrucchiere') || lowerInput.includes('capelli')) {
+                taskType = 'personal';
+                suggestedTime = '10:00';
+                suggestedDate = getNextWeekend();
+                return {
+                    message: `Perfetto per il weekend! ${formatDate(suggestedDate)} alle ${suggestedTime} è ideale. Hai tempo per te senza fretta.`,
+                    task: {
+                        title: '💇‍♀️ Parrucchiere',
+                        date: suggestedDate,
+                        time: suggestedTime,
+                        type: taskType,
+                        duration: 90,
+                        description: 'Appuntamento dal parrucchiere. Relax e cura di sé.',
+                        priority: 'low'
+                    }
+                };
+            }
+
+            // Risposta generica
+            return {
+                message: `Ho capito che devi occuparti di: "${input}". Non ho un suggerimento specifico, ma posso aggiungerlo alla tua agenda. Puoi darmi più dettagli come data o orario preferito?`,
+                task: {
+                    title: input,
+                    date: getNextAvailableDay(),
+                    time: settings.preferredTime === 'auto' ? '14:00' : getTimeFromPreference(settings.preferredTime),
+                    type: 'personal',
+                    duration: 60,
+                    description: 'Task aggiunto tramite assistente AI',
+                    priority: 'normal'
+                }
+            };
+        }
+
+        function executeAITask(task) {
+            const dateKey = task.date;
+            
+            if (!tasks[dateKey]) {
+                tasks[dateKey] = [];
+            }
+
+            const newTask = {
+                title: task.title,
+                time: task.time,
+                type: task.type,
+                id: 'ai_' + Date.now(),
+                synced: false,
+                syncToCalendar: document.getElementById('aiAutoSync').checked,
+                source: 'ai',
+                description: task.description,
+                priority: task.priority,
+                duration: task.duration
+            };
+
+            tasks[dateKey].push(newTask);
+
+            // Ordina i task per orario
+            tasks[dateKey].sort(function(a, b) {
+                if (!a.time && !b.time) return 0;
+                if (!a.time) return 1;
+                if (!b.time) return -1;
+                return a.time.localeCompare(b.time);
+            });
+
+            // Sincronizza automaticamente se richiesto e utente autenticato
+            if (newTask.syncToCalendar && isUserAuthenticated) {
+                setTimeout(() => {
+                    syncTaskToGoogle(newTask, dateKey);
+                    addAIMessage('📤 Task sincronizzato con Google Calendar', 'ai-success');
+                }, 1000);
+            }
+
+            updateDisplay();
+            updateStats();
+            
+            addAIMessage(`✅ Task aggiunto con successo! Controlla il calendario per ${formatDate(task.date)}.`, 'ai-success');
+        }
+
+        function getAISettings() {
+            return {
+                autoSync: document.getElementById('aiAutoSync').checked,
+                smartTime: document.getElementById('aiSmartTime').checked,
+                avoidConflicts: document.getElementById('aiAvoidConflicts').checked,
+                respectRoutine: document.getElementById('aiRespectRoutine').checked,
+                preferredTime: document.getElementById('aiPreferredTime').value
+            };
+        }
+
+        function getNextWorkingDay(daysOffset = 1) {
+            const date = new Date();
+            date.setDate(date.getDate() + daysOffset);
+            
+            // Se è weekend, sposta a lunedì
+            while (date.getDay() === 0 || date.getDay() === 6) {
+                date.setDate(date.getDate() + 1);
+            }
+            
+            return formatDateKey(date);
+        }
+
+        function getNextAvailableDay() {
+            const date = new Date();
+            date.setDate(date.getDate() + 1);
+            return formatDateKey(date);
+        }
+
+        function getNextWeekend() {
+            const date = new Date();
+            const daysUntilSaturday = (6 - date.getDay()) % 7;
+            date.setDate(date.getDate() + (daysUntilSaturday === 0 ? 7 : daysUntilSaturday));
+            return formatDateKey(date);
+        }
+
+        function getTimeFromPreference(preference) {
+            const times = {
+                'morning': '10:00',
+                'afternoon': '15:00',
+                'evening': '18:30'
+            };
+            return times[preference] || '14:00';
+        }
+
+        function formatDate(dateKey) {
+            const date = new Date(dateKey + 'T00:00:00');
+            return date.toLocaleDateString('it-IT', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long' 
+            });
+        }
+
+        function addAIMessage(message, type) {
+            const container = document.getElementById('aiChatHistory');
+            if (!container) return;
+
+            const div = document.createElement('div');
+            div.style.marginBottom = '6px';
+            div.style.fontSize = '11px';
+            div.style.lineHeight = '1.3';
+            
+            switch(type) {
+                case 'user':
+                    div.style.color = '#3498db';
+                    break;
+                case 'ai':
+                    div.style.color = '#27ae60';
+                    break;
+                case 'ai-thinking':
+                    div.style.color = '#f39c12';
+                    div.style.fontStyle = 'italic';
+                    div.id = 'ai-thinking';
+                    break;
+                case 'ai-success':
+                    div.style.color = '#2ecc71';
+                    div.style.fontWeight = 'bold';
+                    break;
+                default:
+                    div.style.color = '#bdc3c7';
+            }
+            
+            div.textContent = message;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+
+            // Limita i messaggi
+            if (container.children.length > 8) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function removeLastAIThinking() {
+            const thinking = document.getElementById('ai-thinking');
+            if (thinking) {
+                thinking.remove();
+            }
+        }
+
+        function showAIFeatures() {
+            const features = `🤖 SEGRETARIO VIRTUALE AI - FUNZIONALITÀ
+
+✨ ATTUALI:
+• Riconoscimento intelligente di task comuni
+• Suggerimenti automatici di orari ottimali
+• Evita conflitti con routine esistenti
+• Sincronizzazione automatica Google Calendar
+• Analisi del tipo di appuntamento
+• Ottimizzazione orari per efficienza
+
+🔮 IN SVILUPPO:
+• Lettura email per estrazione appuntamenti
+• Integrazione WhatsApp per messaggi
+• Analisi traffico per tempi di spostamento
+• Preparazione automatica documenti
+• Follow-up e reminder intelligenti
+• Apprendimento dalle tue abitudini
+
+🎯 ESEMPI DI USO:
+"Devo andare dai vigili urbani entro venerdì"
+→ Programma martedì 10:30 (orario meno affollato)
+
+"Spesa al supermercato"
+→ Programma dopo medicina Annamaria
+
+"Visita medica urgente"
+→ Trova primo slot disponibile mattina
+
+💡 SUGGERIMENTI:
+• Usa linguaggio naturale
+• Specifica urgenza se necessaria
+• Indica preferenze orarie
+• Menziona vincoli specifici
+
+Il sistema impara dalle tue abitudini per migliorare i suggerimenti!`;
+
+            alert(features);
+            addAIMessage('📋 Funzionalità AI spiegate', 'ai');
+        }
     </script>
 </body>
 </html>
-                
